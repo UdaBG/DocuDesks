@@ -792,12 +792,10 @@ export default function EditStage() {
       if (session.editingId) finishTextEdit(session.editingId)
       select(doc.id, null)
       setEditing(doc.id, null)
-      // a finger on empty paper pans the canvas (Figma-style); the scroll
+      // any pointer on empty paper pans the canvas (Figma-style); the scroll
       // container's pointermove handler does the actual scrolling
-      if (e.pointerType === 'touch') {
-        const el = scrollRef.current
-        if (el) panRef.current = { x: e.clientX, y: e.clientY, sl: el.scrollLeft, st: el.scrollTop }
-      }
+      const el = scrollRef.current
+      if (el) panRef.current = { x: e.clientX, y: e.clientY, sl: el.scrollLeft, st: el.scrollTop }
       return
     }
     if (tool === 'retype' || tool === 'text') {

@@ -1351,6 +1351,9 @@ input[type='range'] {
 .edit-overlay.tool-whiteout {
   cursor: crosshair;
 }
+.edit-overlay.tool-select {
+  cursor: grab;
+}
 .edit-overlay.tool-text,
 .edit-overlay.tool-retype {
   cursor: text;

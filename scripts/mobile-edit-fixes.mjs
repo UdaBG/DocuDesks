@@ -148,7 +148,20 @@ try {
   if (p1 - p0 < 100) fail(`select-tool one-finger pan barely moved: ${p0} -> ${p1}`)
   await shot('03-panned.png')
 
-  // ---- 3c. pinch spread still zooms ----------------------------------------
+  // ---- 3c. mouse left-drag pan with the select tool -------------------------
+  const m0 = await evaluate(`document.querySelector('.edit-scroll').scrollTop`)
+  await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: 206, y: 560, button: 'left', buttons: 1, clickCount: 1 })
+  for (let y = 560; y >= 420; y -= 20) {
+    await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 206, y, button: 'left', buttons: 1 })
+    await sleep(16)
+  }
+  await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 206, y: 420, button: 'left', buttons: 0, clickCount: 1 })
+  await sleep(200)
+  const m1 = await evaluate(`document.querySelector('.edit-scroll').scrollTop`)
+  console.log('mouse-drag pan scrollTop:', m0, '->', m1)
+  if (m1 - m0 < 80) fail(`mouse left-drag pan barely moved: ${m0} -> ${m1}`)
+
+  // ---- 3d. pinch spread still zooms ----------------------------------------
   const zBefore = await evaluate(`document.querySelector('.zoom-value').textContent`)
   await touch('touchStart', [[206, 400], [206, 500]])
   for (let s = 0; s <= 80; s += 10) {
