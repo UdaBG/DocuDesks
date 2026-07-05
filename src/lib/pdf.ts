@@ -54,11 +54,16 @@ export async function renderPage(
   maxWidth: number,
   maxHeight: number,
   maxDpr = 2,
+  maxPixels = Number.POSITIVE_INFINITY,
 ): Promise<RenderedPage> {
   const page = await doc.getPage(pageIndex + 1)
   const base = page.getViewport({ scale: 1 })
   const fit = Math.min(maxWidth / base.width, maxHeight / base.height)
-  const dpr = Math.min(window.devicePixelRatio || 1, maxDpr)
+  // render at full device resolution while the backing store stays inside
+  // the pixel budget — high-DPI phones get crisp zoom, huge zoomed desktop
+  // pages degrade gracefully instead of exhausting memory
+  const budgetDpr = Math.sqrt(maxPixels / (base.width * fit * (base.height * fit)))
+  const dpr = Math.min(window.devicePixelRatio || 1, maxDpr, budgetDpr)
   const viewport = page.getViewport({ scale: fit * dpr })
   const canvas = document.createElement('canvas')
   canvas.width = Math.floor(viewport.width)

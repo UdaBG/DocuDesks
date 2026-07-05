@@ -267,9 +267,9 @@ export default function EditStage() {
   const overlayRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const panRef = useRef<{ x: number; y: number; sl: number; st: number } | null>(null)
-  /** touchscreen two-finger pinch (trackpads arrive as ctrl+wheel instead) */
+  /** touchscreen two-finger pinch+pan (trackpads arrive as ctrl+wheel instead) */
   const touchesRef = useRef(new Map<number, { x: number; y: number }>())
-  const pinchRef = useRef<{ d0: number; z0: number } | null>(null)
+  const pinchRef = useRef<{ d0: number; z0: number; c: { x: number; y: number } } | null>(null)
   const [zoom, setZoom] = useState(1) // committed zoom — crisp render
   const zoomRef = useRef(1)
   const zoomTargetRef = useRef(1)
@@ -341,7 +341,7 @@ export default function EditStage() {
    * settle into a crisp re-render once the gesture pauses.
    */
   const zoomTo = useCallback((target: number, anchor?: { x: number; y: number }) => {
-    target = clamp(target, 0.5, 3)
+    target = clamp(target, 0.5, 4)
     const factor = target / zoomTargetRef.current
     if (Math.abs(factor - 1) < 0.001) return
     zoomTargetRef.current = target
@@ -396,8 +396,11 @@ export default function EditStage() {
         setView(null)
         return
       }
-      const maxW = (space.w - 40) * zoom
-      const maxH = (space.h - 128) * zoom
+      // phones fit by width only: the keyboard shrinking the stage height
+      // must never rescale the page under an open text box
+      const phone = space.w < 760
+      const maxW = (space.w - (phone ? 20 : 40)) * zoom
+      const maxH = phone ? Number.POSITIVE_INFINITY : (space.h - 128) * zoom
       if (pageRef.src.type === 'blank') {
         const { wPt, hPt } = pageRef.src
         const fit = Math.min(maxW / wPt, maxH / hPt)
@@ -425,8 +428,9 @@ export default function EditStage() {
       try {
         const page = await proxy.getPage(index + 1)
         const base = page.getViewport({ scale: 1 })
-        // zoomed pages are already large in CSS px — cap backing resolution
-        const rendered = await renderPage(proxy, index, maxW, maxH, zoom > 1.4 ? 1 : 2)
+        // full device resolution within a fixed pixel budget — sharp zoom on
+        // high-DPI phones, bounded memory on huge zoomed desktop pages
+        const rendered = await renderPage(proxy, index, maxW, maxH, 3, 20_000_000)
         if (cancelled) return
         setDims(doc.id, pageRef.id, base.width, base.height)
         setView({
@@ -788,6 +792,12 @@ export default function EditStage() {
       if (session.editingId) finishTextEdit(session.editingId)
       select(doc.id, null)
       setEditing(doc.id, null)
+      // a finger on empty paper pans the canvas (Figma-style); the scroll
+      // container's pointermove handler does the actual scrolling
+      if (e.pointerType === 'touch') {
+        const el = scrollRef.current
+        if (el) panRef.current = { x: e.clientX, y: e.clientY, sl: el.scrollLeft, st: el.scrollTop }
+      }
       return
     }
     if (tool === 'retype' || tool === 'text') {
@@ -1090,11 +1100,16 @@ export default function EditStage() {
           if (e.pointerType !== 'touch') return
           touchesRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
           if (touchesRef.current.size === 2) {
-            // second finger: abort any tool gesture, start pinching
+            // second finger: abort any tool gesture, start pinch+pan
             gestureRef.current = null
+            panRef.current = null
             setDraft(null)
             const [a, b] = [...touchesRef.current.values()]
-            pinchRef.current = { d0: Math.max(Math.hypot(a.x - b.x, a.y - b.y), 20), z0: zoomTargetRef.current }
+            pinchRef.current = {
+              d0: Math.max(Math.hypot(a.x - b.x, a.y - b.y), 20),
+              z0: zoomTargetRef.current,
+              c: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+            }
           }
         }}
         onPointerMoveCapture={(e) => {
@@ -1104,10 +1119,15 @@ export default function EditStage() {
             e.stopPropagation()
             const [a, b] = [...touchesRef.current.values()]
             const d = Math.max(Math.hypot(a.x - b.x, a.y - b.y), 20)
-            zoomTo(pinchRef.current.z0 * (d / pinchRef.current.d0), {
-              x: (a.x + b.x) / 2,
-              y: (a.y + b.y) / 2,
-            })
+            const c = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
+            // spread = zoom about the centroid; centroid travel = pan
+            zoomTo(pinchRef.current.z0 * (d / pinchRef.current.d0), c)
+            const el = scrollRef.current
+            if (el) {
+              el.scrollLeft -= c.x - pinchRef.current.c.x
+              el.scrollTop -= c.y - pinchRef.current.c.y
+            }
+            pinchRef.current.c = c
           }
         }}
         onPointerUpCapture={(e) => {
