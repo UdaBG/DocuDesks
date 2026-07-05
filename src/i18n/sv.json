@@ -179,5 +179,6 @@
   "docs.protected": "Skyddad",
   "stage.encrypted": "Lösenordsskyddad PDF — den sparade kopian behåller inte skyddet",
   "edit.shapingWarn": "Denna skrift kan återges fel i den sparade PDF:en — glyfformning stöds inte ännu.",
-  "edit.ocrReading": "Läser skannad text…"
+  "edit.ocrReading": "Läser skannad text…",
+  "error.unexpected": "Något gick fel: {{message}}"
 }

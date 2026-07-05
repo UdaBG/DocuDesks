@@ -24,6 +24,33 @@ export default function App() {
   const dismissUndo = useApp((s) => s.dismissUndo)
   const [dragDepth, setDragDepth] = useState(0)
   const [mobileTab, setMobileTab] = useState<MobileTab>('docs')
+  const [appError, setAppError] = useState<string | null>(null)
+
+  // Production resilience: surface unexpected failures instead of dying
+  // silently. Routine render cancellations and observer churn are ignored.
+  useEffect(() => {
+    const benign = /ResizeObserver loop|RenderingCancelled|AbortException|TransportDestroyed/
+    const show = (msg: string) => {
+      if (!benign.test(msg)) setAppError(msg.slice(0, 200))
+    }
+    const onError = (e: ErrorEvent) => show(e.message || 'Unknown error')
+    const onRejection = (e: PromiseRejectionEvent) => {
+      const r = e.reason as { message?: string } | undefined
+      show(String(r?.message ?? e.reason ?? 'Unknown error'))
+    }
+    window.addEventListener('error', onError)
+    window.addEventListener('unhandledrejection', onRejection)
+    return () => {
+      window.removeEventListener('error', onError)
+      window.removeEventListener('unhandledrejection', onRejection)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!appError) return
+    const timer = setTimeout(() => setAppError(null), 12000)
+    return () => clearTimeout(timer)
+  }, [appError])
 
   // removal toast auto-dismisses; Ctrl+Z restores while it is up (sign view —
   // the edit view has its own undo stack)
@@ -100,6 +127,14 @@ export default function App() {
       {dragDepth > 0 && (
         <div className="drop-veil">
           <div className="drop-veil-card">{t('stage.dropHint')}</div>
+        </div>
+      )}
+      {appError && (
+        <div className="undo-toast error-toast" role="alert">
+          <span className="undo-toast-text">{t('error.unexpected', { message: appError })}</span>
+          <button className="undo-toast-btn" onClick={() => setAppError(null)}>
+            ✕
+          </button>
         </div>
       )}
       {undoStash && (

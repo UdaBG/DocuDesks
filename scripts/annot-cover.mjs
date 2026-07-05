@@ -245,7 +245,13 @@ try {
   const hidden = await evaluate(`getComputedStyle(document.querySelector('.edit-stage')).display`)
   const sizerWhileHidden = await evaluate(`!!document.querySelector('.zoom-sizer')`)
   console.log('stage display while on Tools tab:', hidden, '— zoom-sizer still mounted:', sizerWhileHidden)
-  await domClick('.mobile-nav .mobile-tab:nth-child(2)') // back to Edit
+  // back to Edit — assert the switch actually took (clicks can race renders)
+  for (let i = 0; i < 3; i++) {
+    await domClick('.mobile-nav .mobile-tab:nth-child(2)')
+    await sleep(400)
+    const disp = await evaluate(`getComputedStyle(document.querySelector('.edit-stage')).display`)
+    if (disp !== 'none') break
+  }
   let pos = [0, 0]
   for (let i = 0; i < 8; i++) {
     await sleep(300)

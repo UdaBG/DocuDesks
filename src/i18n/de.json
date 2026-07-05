@@ -179,5 +179,6 @@
   "docs.protected": "Geschützt",
   "stage.encrypted": "Passwortgeschütztes PDF — die gespeicherte Kopie behält den Schutz nicht",
   "edit.shapingWarn": "Diese Schrift wird im gespeicherten PDF evtl. nicht korrekt dargestellt — Glyphen-Shaping wird noch nicht unterstützt.",
-  "edit.ocrReading": "Gescannter Text wird gelesen…"
+  "edit.ocrReading": "Gescannter Text wird gelesen…",
+  "error.unexpected": "Etwas ist schiefgelaufen: {{message}}"
 }

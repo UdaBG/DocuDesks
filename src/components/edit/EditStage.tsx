@@ -495,6 +495,17 @@ export default function EditStage() {
   // Render the current page (pdf page or blank sheet)
   useEffect(() => {
     let cancelled = false
+    let retries = 0
+    // a transient failure (worker busy, race with a closing document) must
+    // not leave the stage blank until some unrelated state change
+    const retry = () => {
+      if (!cancelled && retries < 3) {
+        retries++
+        setTimeout(() => {
+          if (!cancelled) void run()
+        }, 400 * retries)
+      }
+    }
     async function run() {
       if (!doc || doc.status === 'error' || !session || !pageRef || space.w < 100 || space.h < 100) {
         setView(null)
@@ -522,6 +533,7 @@ export default function EditStage() {
         try {
           opened = await openPdf(doc.bytes)
         } catch {
+          retry()
           return
         }
         if (cancelled) return void opened.close()
@@ -549,7 +561,7 @@ export default function EditStage() {
         pendingScaleRef.current = 1
         setPendingScale(1)
       } catch {
-        /* re-rendered on next state change */
+        retry()
       }
     }
     // tiny debounce so rapid zoom steps collapse into one crisp render

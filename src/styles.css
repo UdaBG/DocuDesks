@@ -1108,6 +1108,13 @@ input[type='range'] {
   margin: -4px 0 2px;
 }
 
+.error-toast {
+  border-color: var(--red, #bb3a30);
+}
+.error-toast .undo-toast-text {
+  color: #bb3a30;
+}
+
 /* dash-style toggles (edit panel shapes) */
 .dash-toggles {
   display: flex;

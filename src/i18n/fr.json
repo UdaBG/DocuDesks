@@ -179,5 +179,6 @@
   "docs.protected": "Protégé",
   "stage.encrypted": "PDF protégé par mot de passe — la copie enregistrée ne conservera pas la protection",
   "edit.shapingWarn": "Cette écriture peut mal s’afficher dans le PDF enregistré — le façonnage des glyphes n’est pas encore pris en charge.",
-  "edit.ocrReading": "Lecture du texte numérisé…"
+  "edit.ocrReading": "Lecture du texte numérisé…",
+  "error.unexpected": "Une erreur est survenue : {{message}}"
 }

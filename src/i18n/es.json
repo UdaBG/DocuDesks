@@ -179,5 +179,6 @@
   "docs.protected": "Protegido",
   "stage.encrypted": "PDF protegido con contraseña — la copia guardada no conservará la protección",
   "edit.shapingWarn": "Esta escritura puede no mostrarse bien en el PDF guardado — aún no se admite la conformación de glifos.",
-  "edit.ocrReading": "Leyendo el texto escaneado…"
+  "edit.ocrReading": "Leyendo el texto escaneado…",
+  "error.unexpected": "Algo salió mal: {{message}}"
 }

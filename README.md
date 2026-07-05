@@ -146,6 +146,9 @@ with Xcode. All mobile icons are already generated in `src-tauri/icons/`.
 
 **Next up**
 
+- **Desktop auto-update** — the Electron build should check GitHub releases
+  and update itself (electron-updater); the Android app should at least
+  notify when a newer APK exists. Ends the manual download-reinstall loop.
 - **Annotation editing** — text added on top of a page by other apps (FreeText
   notes, stamps, filled form fields) lives in the annotation layer, not the
   page content. Since 0.1.4 it is flattened on save so covers work and looks
