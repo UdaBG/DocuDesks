@@ -54,8 +54,9 @@ function hsvToHex(h: number, s: number, v: number): string {
 }
 
 // ---- self-contained picker popover (no native color dialog: WebView2's is broken) ----
+// Also reused by the signature studio's ink picker.
 
-function ColorPopover({
+export function ColorPopover({
   value,
   onChange,
   onClose,

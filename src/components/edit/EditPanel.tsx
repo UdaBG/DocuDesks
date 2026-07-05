@@ -3,13 +3,14 @@ import { useTranslation } from 'react-i18next'
 import { useApp } from '../../store'
 import { useEdit } from '../../editor/editStore'
 import { availableFonts, hasFullFontList, type EditorFont } from '../../editor/fonts'
-import type { PenVariant, TextObj } from '../../editor/types'
+import type { DashStyle, PenVariant, TextObj } from '../../editor/types'
 import ColorField from './ColorField'
 import WatermarkDialog from './WatermarkDialog'
 import { WatermarkIcon } from '../icons'
 
 const HIGHLIGHT_DEFAULT = '#ffe066'
 const PENS: PenVariant[] = ['ball', 'marker', 'highlight']
+const DASHES: DashStyle[] = ['solid', 'dashed', 'dotted']
 
 export default function EditPanel() {
   const { t } = useTranslation()
@@ -66,6 +67,14 @@ export default function EditPanel() {
   const showStroke = !showText
   const showFill =
     tool === 'rect' || tool === 'ellipse' || selected?.kind === 'rect' || selected?.kind === 'ellipse'
+  const showDash =
+    showFill ||
+    tool === 'line' ||
+    tool === 'arrow' ||
+    selected?.kind === 'line' ||
+    selected?.kind === 'arrow'
+  const dashValue: DashStyle =
+    selected && 'dash' in selected ? (selected.dash ?? 'solid') : style.dash
 
   const strokeValue =
     selected && 'stroke' in selected ? selected.stroke : selected?.kind === 'ink' ? selected.color : style.stroke
@@ -236,6 +245,26 @@ export default function EditPanel() {
                   apply({ fill: v }, selected && 'fill' in selected ? { fill: v } : null)
                 }
               />
+            )}
+            {showDash && (
+              <div className="field">
+                <span className="field-label">{t('edit.dash')}</span>
+                <div className="dash-toggles">
+                  {DASHES.map((d) => (
+                    <button
+                      key={d}
+                      className={dashValue === d ? 'dash-toggle active' : 'dash-toggle'}
+                      title={t(`edit.dash.${d}`)}
+                      aria-label={t(`edit.dash.${d}`)}
+                      onClick={() =>
+                        apply({ dash: d }, selected && 'dash' in selected ? { dash: d } : null)
+                      }
+                    >
+                      <span className={`dash-sample dash-${d}`} />
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
             <label className="field">
               <span>

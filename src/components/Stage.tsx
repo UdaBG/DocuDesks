@@ -8,7 +8,7 @@ import { ChevronLeftIcon, ChevronRightIcon, CloseIcon, DocMinusIcon, NibIcon, Pl
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
 
 interface DragState {
-  kind: 'move' | 'resize'
+  kind: 'move' | 'resize' | 'rotate'
   /** 'primary' for the smart-detected stamp, otherwise the stamp's id */
   target: string
   aspect: number
@@ -17,6 +17,8 @@ interface DragState {
   /** whether the pointer travelled — a clean click selects, a drag only moves */
   moved: boolean
   box: { x: number; top: number; w: number; h: number }
+  /** stamp centre in client coords — the pivot while rotating */
+  center?: { x: number; y: number }
 }
 
 export default function Stage() {
@@ -153,12 +155,14 @@ export default function Stage() {
     target: string,
     b: { x: number; top: number; w: number; h: number },
     dropMaxH = false,
+    rot?: number,
   ) {
     if (!rendered || !doc) return
     const geom = {
       x: b.x / rendered.width,
       yb: (b.top + b.h) / rendered.height,
       w: b.w / rendered.width,
+      ...(rot !== undefined ? { rot } : {}),
       dropMaxH,
     }
     if (target === 'primary') updatePlacementBox(geom)
@@ -167,7 +171,7 @@ export default function Stage() {
 
   function beginStampDrag(
     e: React.PointerEvent,
-    kind: 'move' | 'resize',
+    kind: 'move' | 'resize' | 'rotate',
     target: string,
     b: { x: number; top: number; w: number; h: number },
     aspect: number,
@@ -179,7 +183,14 @@ export default function Stage() {
     } catch {
       /* synthetic pointer */
     }
-    dragRef.current = { kind, target, aspect, startX: e.clientX, startY: e.clientY, moved: false, box: b }
+    let center: { x: number; y: number } | undefined
+    if (kind === 'rotate') {
+      // rotation keeps the centre fixed, so the rotated element's bounding
+      // rect still gives the true pivot
+      const host = (e.currentTarget as Element).closest('.sig-box')?.getBoundingClientRect()
+      if (host) center = { x: host.left + host.width / 2, y: host.top + host.height / 2 }
+    }
+    dragRef.current = { kind, target, aspect, startX: e.clientX, startY: e.clientY, moved: false, box: b, center }
   }
 
   function onPointerMove(e: React.PointerEvent) {
@@ -189,6 +200,16 @@ export default function Stage() {
     if (!d.moved) return
     const W = rendered.width
     const H = rendered.height
+    if (d.kind === 'rotate') {
+      if (!d.center) return
+      // the handle sits above the centre, so straight up = 0°
+      let rot = (Math.atan2(e.clientY - d.center.y, e.clientX - d.center.x) * 180) / Math.PI + 90
+      if (rot > 180) rot -= 360
+      const snap = Math.round(rot / 45) * 45
+      if (Math.abs(rot - snap) < 5) rot = snap
+      commitBox(d.target, d.box, false, Math.round(rot * 10) / 10)
+      return
+    }
     if (d.kind === 'move') {
       const x = clamp(d.box.x + e.clientX - d.startX, 0, W - d.box.w)
       const top = clamp(d.box.top + e.clientY - d.startY, 0, H - d.box.h)
@@ -307,7 +328,13 @@ export default function Stage() {
                 className={`sig-box ${mode === 'smart' && !doc.override ? 'smart' : ''} ${
                   selectedStampId === 'primary' ? 'stamp-selected' : ''
                 }`}
-                style={{ left: box.x, top: box.top, width: box.w, height: box.h }}
+                style={{
+                  left: box.x,
+                  top: box.top,
+                  width: box.w,
+                  height: box.h,
+                  transform: pl?.rot ? `rotate(${pl.rot}deg)` : undefined,
+                }}
                 onPointerDown={(e) =>
                   beginStampDrag(e, 'move', 'primary', box!, signature.height / signature.width)
                 }
@@ -349,6 +376,19 @@ export default function Stage() {
                   onPointerMove={onPointerMove}
                   onPointerUp={onPointerUp}
                 />
+                <span
+                  className="sig-rotate"
+                  title={t('sig.rotate')}
+                  onPointerDown={(e) =>
+                    beginStampDrag(e, 'rotate', 'primary', box!, signature.height / signature.width)
+                  }
+                  onPointerMove={onPointerMove}
+                  onPointerUp={onPointerUp}
+                  onDoubleClick={(e) => {
+                    e.stopPropagation()
+                    commitBox('primary', box!, false, 0)
+                  }}
+                />
               </div>
             )}
             {doc &&
@@ -356,7 +396,13 @@ export default function Stage() {
                 <div
                   key={stamp.id}
                   className={`sig-box extra ${selectedStampId === stamp.id ? 'stamp-selected' : ''}`}
-                  style={{ left: b.x, top: b.top, width: b.w, height: b.h }}
+                  style={{
+                    left: b.x,
+                    top: b.top,
+                    width: b.w,
+                    height: b.h,
+                    transform: stamp.placement.rot ? `rotate(${stamp.placement.rot}deg)` : undefined,
+                  }}
                   onPointerDown={(e) => beginStampDrag(e, 'move', stamp.id, b, sig.height / sig.width)}
                   onPointerMove={onPointerMove}
                   onPointerUp={onPointerUp}
@@ -393,6 +439,17 @@ export default function Stage() {
                     onPointerDown={(e) => beginStampDrag(e, 'resize', stamp.id, b, sig.height / sig.width)}
                     onPointerMove={onPointerMove}
                     onPointerUp={onPointerUp}
+                  />
+                  <span
+                    className="sig-rotate"
+                    title={t('sig.rotate')}
+                    onPointerDown={(e) => beginStampDrag(e, 'rotate', stamp.id, b, sig.height / sig.width)}
+                    onPointerMove={onPointerMove}
+                    onPointerUp={onPointerUp}
+                    onDoubleClick={(e) => {
+                      e.stopPropagation()
+                      commitBox(stamp.id, b, false, 0)
+                    }}
                   />
                 </div>
               ))}

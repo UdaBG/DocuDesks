@@ -25,6 +25,8 @@ export interface Placement {
    * signature's aspect ratio would exceed it, the stamp shrinks to fit.
    */
   maxH?: number
+  /** rotation about the stamp's centre, degrees clockwise on screen */
+  rot?: number
 }
 
 /** An additional per-document signature stamp (beyond the bulk placement). */

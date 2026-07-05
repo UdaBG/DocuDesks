@@ -163,5 +163,17 @@
   "undo.action": "Ångra (Ctrl+Z)",
   "edit.zoomIn": "Zooma in (Ctrl + skroll)",
   "edit.zoomOut": "Zooma ut",
-  "edit.zoomReset": "Återställ zoom (Ctrl+0)"
+  "edit.zoomReset": "Återställ zoom (Ctrl+0)",
+  "ink.gold": "Guld",
+  "ink.silver": "Silver",
+  "studio.pen": "Penna",
+  "studio.pen.fountain": "Reservoarpenna",
+  "studio.pen.ballpoint": "Kulspetspenna",
+  "studio.pen.marker": "Märkpenna",
+  "sig.rotate": "Dra för att rotera — dubbelklicka för att återställa",
+  "mobile.tools": "Verktyg",
+  "edit.dash": "Linjestil",
+  "edit.dash.solid": "Heldragen",
+  "edit.dash.dashed": "Streckad",
+  "edit.dash.dotted": "Prickad"
 }

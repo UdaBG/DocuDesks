@@ -1,5 +1,4 @@
-import type { InkMode } from '../types'
-import { INK_COLORS } from '../types'
+import { applySheen, inkHex, type InkValue } from './ink'
 import { trimCanvas } from './imageUtils'
 
 export interface ExtractOptions {
@@ -7,7 +6,8 @@ export interface ExtractOptions {
   sensitivity: number
   /** 0..1 — how large a blob must be to survive despeckling. */
   despeckle: number
-  ink: InkMode
+  /** 'original' keeps the photographed ink colour */
+  ink: InkValue
 }
 
 export const DEFAULT_EXTRACT: ExtractOptions = {
@@ -71,7 +71,7 @@ export function extractSignature(
   removeSmallComponents(ink, w, h, 0.4, minArea)
 
   // Compose output pixels.
-  const inkColor = opts.ink === 'original' ? null : hexToRgb(INK_COLORS[opts.ink])
+  const inkColor = opts.ink === 'original' ? null : hexToRgb(inkHex(opts.ink))
   for (let i = 0; i < n; i++) {
     const a = ink[i]
     if (a <= 0.02) {
@@ -87,7 +87,9 @@ export function extractSignature(
   }
   ctx.putImageData(imageData, 0, 0)
 
-  return trimCanvas(canvas, 10, 14)
+  const trimmed = trimCanvas(canvas, 10, 14)
+  if (trimmed) applySheen(trimmed, opts.ink)
+  return trimmed
 }
 
 function smoothstep(lo: number, hi: number, v: number): number {

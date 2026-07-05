@@ -1,4 +1,4 @@
-import { PDFDocument, type PDFImage } from 'pdf-lib'
+import { degrees, PDFDocument, type PDFImage } from 'pdf-lib'
 import type { Placement, SavedSignature } from '../types'
 import { fitStampBox, resolvePageIndex } from '../types'
 import { dataUrlToBytes } from './imageUtils'
@@ -27,7 +27,20 @@ export async function applyStamps(bytes: Uint8Array, stamps: StampInput[]): Prom
     const page = pdf.getPage(pageIndex)
     const { width: pw, height: ph } = page.getSize()
     const box = fitStampBox(stamp.placement, stamp.signature.width, stamp.signature.height, pw, ph)
-    page.drawImage(png, { x: box.x, y: ph - box.yTop - box.h, width: box.w, height: box.h })
+    const rot = stamp.placement.rot ?? 0
+    let x = box.x
+    let y = ph - box.yTop - box.h
+    if (rot) {
+      // pdf-lib rotates about the image's bottom-left corner (ccw positive,
+      // y-up), the preview about the stamp's centre (cw positive, y-down):
+      // same visual angle is -rot, and the corner orbits the centre.
+      const th = (-rot * Math.PI) / 180
+      const cx = x + box.w / 2
+      const cy = y + box.h / 2
+      x = cx + (-box.w / 2) * Math.cos(th) - (-box.h / 2) * Math.sin(th)
+      y = cy + (-box.w / 2) * Math.sin(th) + (-box.h / 2) * Math.cos(th)
+    }
+    page.drawImage(png, { x, y, width: box.w, height: box.h, rotate: degrees(-rot) })
   }
   return pdf.save()
 }

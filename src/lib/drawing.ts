@@ -2,10 +2,24 @@ import { getStroke } from 'perfect-freehand'
 
 export type StrokePoint = [number, number, number]
 
+/** Signature drawing pens — how the nib responds to speed and pressure. */
+export type SigPen = 'fountain' | 'ballpoint' | 'marker'
+
+export const SIG_PENS: Record<SigPen, { size: number; thinning: number }> = {
+  /** swells and thins with the hand, like a nib */
+  fountain: { size: 5.5, thinning: 0.62 },
+  /** a uniform fine line */
+  ballpoint: { size: 3.2, thinning: 0.05 },
+  /** broad, near-uniform felt tip */
+  marker: { size: 10, thinning: 0.12 },
+}
+
 export interface Stroke {
   points: StrokePoint[]
   /** true when the input device reports no real pressure (mouse) */
   simulatePressure: boolean
+  /** which pen drew this stroke (default fountain) */
+  pen?: SigPen
 }
 
 const OPTIONS = {
@@ -55,8 +69,11 @@ export function inkToSvgPath(
 }
 
 export function strokeToPath(stroke: Stroke): Path2D {
+  const pen = SIG_PENS[stroke.pen ?? 'fountain']
   const outline = getStroke(stroke.points, {
     ...OPTIONS,
+    size: pen.size,
+    thinning: pen.thinning,
     simulatePressure: stroke.simulatePressure,
   })
   const path = new Path2D()

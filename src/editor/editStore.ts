@@ -88,6 +88,7 @@ export const useEdit = create<EditState>((set, get) => {
       stroke: '#2f45c4',
       fill: null,
       strokeWidthPt: 2,
+      dash: 'solid',
       opacity: 1,
       fontId: 'std:helvetica',
       fontSizePt: 14,

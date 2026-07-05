@@ -34,6 +34,19 @@ export interface InkObj extends BaseObj {
   opacity: number
 }
 
+/** Stroke pattern for shapes and lines. */
+export type DashStyle = 'solid' | 'dashed' | 'dotted'
+
+/**
+ * Dash pattern (in the same units as the stroke width), undefined = solid.
+ * Dotted uses zero-length dashes and needs round line caps to show as dots.
+ */
+export function dashPattern(dash: DashStyle | undefined, w: number): number[] | undefined {
+  if (dash === 'dashed') return [w * 3.2, w * 2.2]
+  if (dash === 'dotted') return [0.1, w * 2.4]
+  return undefined
+}
+
 export interface ShapeObj extends BaseObj {
   kind: 'rect' | 'ellipse'
   x: number
@@ -44,6 +57,7 @@ export interface ShapeObj extends BaseObj {
   strokeWidthPt: number
   fill: string | null
   opacity: number
+  dash?: DashStyle
 }
 
 export interface LineObj extends BaseObj {
@@ -55,6 +69,7 @@ export interface LineObj extends BaseObj {
   stroke: string
   strokeWidthPt: number
   opacity: number
+  dash?: DashStyle
 }
 
 export interface TextObj extends BaseObj {
@@ -157,6 +172,7 @@ export interface EditorStyle {
   stroke: string
   fill: string | null
   strokeWidthPt: number
+  dash: DashStyle
   opacity: number
   fontId: string
   fontSizePt: number

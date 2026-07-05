@@ -546,6 +546,42 @@ select {
   border-color: var(--brass);
 }
 
+.sig-rotate {
+  position: absolute;
+  top: -26px;
+  left: 50%;
+  margin-left: -7px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--paper);
+  border: 2.5px solid var(--royal);
+  cursor: grab;
+  touch-action: none;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.sig-rotate::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 1.5px;
+  height: 13px;
+  background: var(--royal);
+  transform: translateX(-50%);
+}
+.sig-box:hover .sig-rotate,
+.sig-box.stamp-selected .sig-rotate {
+  opacity: 1;
+}
+.sig-box.smart .sig-rotate {
+  border-color: var(--brass);
+}
+.sig-box.smart .sig-rotate::after {
+  background: var(--brass);
+}
+
 .sig-box.extra {
   border-color: rgba(23, 128, 77, 0.55);
   background: rgba(23, 128, 77, 0.04);
@@ -976,6 +1012,68 @@ input[type='range'] {
 .ink-orig {
   font-size: 13px;
   color: var(--ink-700);
+}
+.ink-swatch.custom {
+  background: conic-gradient(#f66 0deg, #fc3 90deg, #4c8 180deg, #48d 270deg, #f66 360deg);
+}
+.ink-picker .color-popover {
+  top: auto;
+  bottom: calc(100% + 8px);
+  left: 0;
+  right: auto;
+}
+
+.pen-picker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pen-opt {
+  padding: 5px 12px;
+  border-radius: 7px;
+  border: 1px solid var(--ink-300);
+  background: var(--paper);
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-700);
+}
+.pen-opt.active {
+  border-color: var(--royal);
+  color: var(--royal);
+  background: rgba(47, 69, 196, 0.06);
+}
+
+/* dash-style toggles (edit panel shapes) */
+.dash-toggles {
+  display: flex;
+  gap: 6px;
+}
+.dash-toggle {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  height: 30px;
+  border: 1px solid var(--ink-300);
+  border-radius: 7px;
+  background: var(--paper);
+}
+.dash-toggle.active {
+  border-color: var(--royal);
+  background: rgba(47, 69, 196, 0.06);
+}
+.dash-sample {
+  width: 34px;
+  border-top: 2.5px solid var(--ink-700);
+}
+.dash-toggle.active .dash-sample {
+  border-top-color: var(--royal);
+}
+.dash-sample.dash-dashed {
+  border-top-style: dashed;
+}
+.dash-sample.dash-dotted {
+  border-top-style: dotted;
 }
 
 .photo-drop {
@@ -1754,15 +1852,18 @@ input[type='range'] {
     grid-template-rows: auto minmax(0, 1fr) auto auto;
   }
 
-  /* top bar wraps to two rows — brand + language, then the mode toggle
-     across the full width; edit mode is desktop-first for now */
+  /* top bar wraps to two rows — brand + language, then the view and mode
+     toggles across the full width */
   .topbar {
     flex-wrap: wrap;
     gap: 6px 10px;
     padding: 7px 10px;
   }
   .view-toggle {
-    display: none;
+    order: 4;
+  }
+  .mode-wrap {
+    order: 5;
   }
   .brand {
     min-width: 0;
@@ -1774,8 +1875,7 @@ input[type='range'] {
     display: none;
   }
   .mode-wrap {
-    order: 5;
-    flex-basis: 100%;
+    flex: 1.4 1 auto;
   }
   .mode-toggle {
     flex: 1;
@@ -1785,6 +1885,23 @@ input[type='range'] {
     justify-content: center;
     padding: 6px 10px;
     font-size: 12px;
+  }
+
+  /* edit mode on a phone: floating chrome fits the narrow stage */
+  .edit-toolbar {
+    max-width: calc(100% - 12px);
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .pages-strip {
+    max-width: calc(100% - 8px);
+  }
+  /* the wrapped toolbar needs the top corner — tuck the zoom pill above the
+     pages strip instead */
+  .zoom-pill {
+    top: auto;
+    bottom: 76px;
+    right: 8px;
   }
   .lang select {
     padding: 6px 22px 6px 8px;
@@ -1825,6 +1942,8 @@ input[type='range'] {
   }
   .ab-right {
     flex: 1;
+    flex-wrap: wrap;
+    gap: 8px;
   }
   .btn-sign {
     flex: 1;

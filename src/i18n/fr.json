@@ -163,5 +163,17 @@
   "undo.action": "Annuler (Ctrl+Z)",
   "edit.zoomIn": "Zoom avant (Ctrl + molette)",
   "edit.zoomOut": "Zoom arrière",
-  "edit.zoomReset": "Réinitialiser le zoom (Ctrl+0)"
+  "edit.zoomReset": "Réinitialiser le zoom (Ctrl+0)",
+  "ink.gold": "Or",
+  "ink.silver": "Argent",
+  "studio.pen": "Stylo",
+  "studio.pen.fountain": "Plume",
+  "studio.pen.ballpoint": "Bille",
+  "studio.pen.marker": "Marqueur",
+  "sig.rotate": "Glisser pour pivoter — double-clic pour réinitialiser",
+  "mobile.tools": "Outils",
+  "edit.dash": "Style de ligne",
+  "edit.dash.solid": "Continue",
+  "edit.dash.dashed": "Tirets",
+  "edit.dash.dotted": "Pointillés"
 }

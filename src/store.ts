@@ -74,10 +74,10 @@ interface AppState {
   selectDoc(id: string): void
   setPreviewPage(page: number): void
   setMode(mode: SignMode): void
-  updatePlacementBox(box: { x: number; yb: number; w: number; dropMaxH?: boolean }): void
+  updatePlacementBox(box: { x: number; yb: number; w: number; rot?: number; dropMaxH?: boolean }): void
   setPageAnchor(anchor: Placement['anchor'], pageIndex?: number): void
   addExtraStamp(box: { x: number; yb: number; w: number }): void
-  updateExtraStamp(stampId: string, box: { x: number; yb: number; w: number; dropMaxH?: boolean }): void
+  updateExtraStamp(stampId: string, box: { x: number; yb: number; w: number; rot?: number; dropMaxH?: boolean }): void
   /** hide a stack-wide stamp on one document only */
   excludeStampForDoc(docId: string, stampId: string): void
   /** delete a stack-wide stamp from every document */

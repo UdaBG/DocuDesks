@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useApp } from '../store'
-import { INK_COLORS } from '../types'
-import { drawStrokes, type Stroke } from '../lib/drawing'
+import { drawStrokes, SIG_PENS, type SigPen, type Stroke } from '../lib/drawing'
+import { applySheen, inkHex, inkSwatchCss } from '../lib/ink'
 import { DEFAULT_EXTRACT, extractSignature, type ExtractOptions } from '../lib/extractSignature'
 import { renderTypedSignature, SIGNATURE_FONTS } from '../lib/typedSignature'
 import { trimCanvas, loadImage } from '../lib/imageUtils'
+import { ColorPopover } from './edit/ColorField'
 import { CloseIcon, TrashIcon, UndoIcon } from './icons'
 
 type Tab = 'draw' | 'photo' | 'type'
@@ -23,25 +24,65 @@ function InkPicker({
   withOriginal?: boolean
 }) {
   const { t } = useTranslation()
-  const options: { key: string; label: string; color?: string }[] = [
+  const [mixerOpen, setMixerOpen] = useState(false)
+  const options: { key: string; label: string; swatch?: string }[] = [
     ...(withOriginal ? [{ key: 'original', label: t('ink.original') }] : []),
-    { key: 'black', label: t('ink.black'), color: INK_COLORS.black },
-    { key: 'blue-black', label: t('ink.blueBlack'), color: INK_COLORS['blue-black'] },
-    { key: 'royal', label: t('ink.royal'), color: INK_COLORS.royal },
+    { key: 'black', label: t('ink.black'), swatch: inkSwatchCss('black') },
+    { key: 'blue-black', label: t('ink.blueBlack'), swatch: inkSwatchCss('blue-black') },
+    { key: 'royal', label: t('ink.royal'), swatch: inkSwatchCss('royal') },
+    { key: 'gold', label: t('ink.gold'), swatch: inkSwatchCss('gold') },
+    { key: 'silver', label: t('ink.silver'), swatch: inkSwatchCss('silver') },
   ]
+  // anything that isn't a preset key is a mixed custom colour (hex)
+  const isCustom = /^#[0-9a-f]{6}$/i.test(value)
   return (
-    <div className="ink-picker" role="group" aria-label={t('studio.ink')}>
+    <div className="ink-picker color-row" role="group" aria-label={t('studio.ink')}>
       <span className="field-label">{t('studio.ink')}</span>
       {options.map((o) => (
         <button
           key={o.key}
           className={value === o.key ? 'ink-swatch active' : 'ink-swatch'}
-          style={o.color ? { background: o.color } : undefined}
+          style={o.swatch ? { background: o.swatch } : undefined}
           title={o.label}
           aria-label={o.label}
-          onClick={() => onChange(o.key)}
+          onClick={() => {
+            setMixerOpen(false)
+            onChange(o.key)
+          }}
         >
-          {!o.color && <span className="ink-orig">◐</span>}
+          {!o.swatch && <span className="ink-orig">◐</span>}
+        </button>
+      ))}
+      <button
+        className={isCustom || mixerOpen ? 'ink-swatch custom active' : 'ink-swatch custom'}
+        style={isCustom ? { background: value } : undefined}
+        title={t('edit.customColor')}
+        aria-label={t('edit.customColor')}
+        onClick={() => setMixerOpen((o) => !o)}
+      />
+      {mixerOpen && (
+        <ColorPopover
+          value={isCustom ? value : '#2f45c4'}
+          onChange={onChange}
+          onClose={() => setMixerOpen(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+function PenPicker({ value, onChange }: { value: SigPen; onChange: (p: SigPen) => void }) {
+  const { t } = useTranslation()
+  return (
+    <div className="pen-picker" role="group" aria-label={t('studio.pen')}>
+      <span className="field-label">{t('studio.pen')}</span>
+      {(Object.keys(SIG_PENS) as SigPen[]).map((p) => (
+        <button
+          key={p}
+          className={value === p ? 'pen-opt active' : 'pen-opt'}
+          onClick={() => onChange(p)}
+        >
+          {t(`studio.pen.${p}`)}
         </button>
       ))}
     </div>
@@ -57,10 +98,9 @@ function DrawTab({ onResult }: { onResult: (c: HTMLCanvasElement | null) => void
   const { t } = useTranslation()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [strokes, setStrokes] = useState<Stroke[]>([])
-  const [ink, setInk] = useState<'black' | 'blue-black' | 'royal'>('blue-black')
+  const [ink, setInk] = useState<string>('blue-black')
+  const [pen, setPen] = useState<SigPen>('fountain')
   const liveStroke = useRef<Stroke | null>(null)
-
-  const color = INK_COLORS[ink]
 
   const repaint = useCallback(() => {
     const canvas = canvasRef.current
@@ -73,8 +113,9 @@ function DrawTab({ onResult }: { onResult: (c: HTMLCanvasElement | null) => void
     }
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     const all = liveStroke.current ? [...strokes, liveStroke.current] : strokes
-    drawStrokes(ctx, all, color, dpr)
-  }, [strokes, color])
+    drawStrokes(ctx, all, inkHex(ink), dpr)
+    applySheen(canvas, ink)
+  }, [strokes, ink])
 
   useEffect(() => {
     repaint()
@@ -85,10 +126,12 @@ function DrawTab({ onResult }: { onResult: (c: HTMLCanvasElement | null) => void
     const out = document.createElement('canvas')
     out.width = DRAW_W * 2
     out.height = DRAW_H * 2
-    drawStrokes(out.getContext('2d')!, strokes, color, 2)
-    onResult(trimCanvas(out, 8, 16))
+    drawStrokes(out.getContext('2d')!, strokes, inkHex(ink), 2)
+    const trimmed = trimCanvas(out, 8, 16)
+    if (trimmed) applySheen(trimmed, ink)
+    onResult(trimmed)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [strokes, color])
+  }, [strokes, ink])
 
   function toLocal(e: React.PointerEvent): [number, number, number] {
     const rect = canvasRef.current!.getBoundingClientRect()
@@ -112,6 +155,7 @@ function DrawTab({ onResult }: { onResult: (c: HTMLCanvasElement | null) => void
             liveStroke.current = {
               points: [toLocal(e)],
               simulatePressure: e.pointerType !== 'pen',
+              pen,
             }
             repaint()
           }}
@@ -129,7 +173,7 @@ function DrawTab({ onResult }: { onResult: (c: HTMLCanvasElement | null) => void
         <div className="draw-baseline" />
       </div>
       <div className="tab-tools">
-        <InkPicker value={ink} onChange={(v) => setInk(v as typeof ink)} />
+        <InkPicker value={ink} onChange={setInk} />
         <div className="spacer" />
         <button
           className="ghost-btn"
@@ -143,6 +187,9 @@ function DrawTab({ onResult }: { onResult: (c: HTMLCanvasElement | null) => void
           <TrashIcon size={14} />
           {t('studio.clear')}
         </button>
+      </div>
+      <div className="tab-tools">
+        <PenPicker value={pen} onChange={setPen} />
       </div>
     </div>
   )
@@ -265,7 +312,7 @@ function TypeTab({ onResult }: { onResult: (c: HTMLCanvasElement | null) => void
   const { t } = useTranslation()
   const [text, setText] = useState('')
   const [fontId, setFontId] = useState(SIGNATURE_FONTS[0].id)
-  const [ink, setInk] = useState<'black' | 'blue-black' | 'royal'>('blue-black')
+  const [ink, setInk] = useState<string>('blue-black')
 
   useEffect(() => {
     const trimmed = text.trim()
@@ -276,7 +323,7 @@ function TypeTab({ onResult }: { onResult: (c: HTMLCanvasElement | null) => void
     let cancelled = false
     const timer = setTimeout(() => {
       const font = SIGNATURE_FONTS.find((f) => f.id === fontId) ?? SIGNATURE_FONTS[0]
-      void renderTypedSignature(trimmed, font, INK_COLORS[ink]).then((c) => {
+      void renderTypedSignature(trimmed, font, ink).then((c) => {
         if (!cancelled) onResult(c)
       })
     }, 150)
@@ -303,7 +350,7 @@ function TypeTab({ onResult }: { onResult: (c: HTMLCanvasElement | null) => void
           <button
             key={f.id}
             className={f.id === fontId ? 'font-card active' : 'font-card'}
-            style={{ fontFamily: `"${f.family}"`, color: INK_COLORS[ink] }}
+            style={{ fontFamily: `"${f.family}"`, color: inkHex(ink) }}
             onClick={() => setFontId(f.id)}
           >
             {text.trim() || t('studio.type.placeholder')}
@@ -311,7 +358,7 @@ function TypeTab({ onResult }: { onResult: (c: HTMLCanvasElement | null) => void
         ))}
       </div>
       <div className="tab-tools">
-        <InkPicker value={ink} onChange={(v) => setInk(v as typeof ink)} />
+        <InkPicker value={ink} onChange={setInk} />
       </div>
     </div>
   )

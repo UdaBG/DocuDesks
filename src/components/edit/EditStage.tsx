@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useApp } from '../../store'
 import { useEdit } from '../../editor/editStore'
 import type { EditObj, LineObj, TextObj, ToolId, Watermark } from '../../editor/types'
-import { TEXT_BASELINE, TEXT_LINE_HEIGHT, textStyleFingerprint } from '../../editor/types'
+import { dashPattern, TEXT_BASELINE, TEXT_LINE_HEIGHT, textStyleFingerprint } from '../../editor/types'
 import { uid } from '../../types'
 import type { PDFPageProxy } from 'pdfjs-dist'
 import { openPdf, renderPage, type OpenedPdf } from '../../lib/pdf'
@@ -854,13 +854,14 @@ export default function EditStage() {
         id: uid(), pageId: pageRef.id, kind: tool,
         x: xf, y: yf, w: 0, h: 0,
         stroke: style.stroke, strokeWidthPt: style.strokeWidthPt,
-        fill: style.fill, opacity: style.opacity,
+        fill: style.fill, opacity: style.opacity, dash: style.dash,
       })
     } else if (tool === 'line' || tool === 'arrow') {
       setDraft({
         id: uid(), pageId: pageRef.id, kind: tool,
         x1: xf, y1: yf, x2: xf, y2: yf,
         stroke: style.stroke, strokeWidthPt: style.strokeWidthPt, opacity: style.opacity,
+        dash: style.dash,
       })
     } else if (tool === 'whiteout') {
       setDraft({
@@ -1017,23 +1018,28 @@ export default function EditStage() {
       case 'rect':
         return (
           <rect key={o.id} {...hit} x={px(o.x)} y={py(o.y)} width={px(o.w)} height={py(o.h)}
-            fill={o.fill ?? 'none'} fillOpacity={o.opacity} stroke={o.stroke} strokeOpacity={o.opacity} strokeWidth={sw(o.strokeWidthPt)} />
+            fill={o.fill ?? 'none'} fillOpacity={o.opacity} stroke={o.stroke} strokeOpacity={o.opacity} strokeWidth={sw(o.strokeWidthPt)}
+            strokeDasharray={dashPattern(o.dash, sw(o.strokeWidthPt))?.join(' ')}
+            strokeLinecap={o.dash === 'dotted' ? 'round' : undefined} />
         )
       case 'ellipse':
         return (
           <ellipse key={o.id} {...hit} cx={px(o.x + o.w / 2)} cy={py(o.y + o.h / 2)} rx={px(o.w / 2)} ry={py(o.h / 2)}
-            fill={o.fill ?? 'none'} fillOpacity={o.opacity} stroke={o.stroke} strokeOpacity={o.opacity} strokeWidth={sw(o.strokeWidthPt)} />
+            fill={o.fill ?? 'none'} fillOpacity={o.opacity} stroke={o.stroke} strokeOpacity={o.opacity} strokeWidth={sw(o.strokeWidthPt)}
+            strokeDasharray={dashPattern(o.dash, sw(o.strokeWidthPt))?.join(' ')}
+            strokeLinecap={o.dash === 'dotted' ? 'round' : undefined} />
         )
       case 'line':
       case 'arrow': {
         const x1 = px(o.x1), y1 = py(o.y1), x2 = px(o.x2), y2 = py(o.y2)
         const head = Math.max(sw(o.strokeWidthPt) * 4, sw(10))
         const ang = Math.atan2(y1 - y2, x1 - x2)
+        const dash = dashPattern(o.dash, sw(o.strokeWidthPt))?.join(' ')
         return (
           <g key={o.id} {...hit} stroke={o.stroke} strokeOpacity={o.opacity} strokeWidth={sw(o.strokeWidthPt)} strokeLinecap="round">
             {/* fat invisible line to make thin lines selectable */}
             <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="transparent" strokeWidth={12} />
-            <line x1={x1} y1={y1} x2={x2} y2={y2} />
+            <line x1={x1} y1={y1} x2={x2} y2={y2} strokeDasharray={dash} />
             {o.kind === 'arrow' && (
               <>
                 <line x1={x2} y1={y2} x2={x2 + head * Math.cos(ang - 0.45)} y2={y2 + head * Math.sin(ang - 0.45)} />

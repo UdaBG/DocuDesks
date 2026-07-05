@@ -163,5 +163,17 @@
   "undo.action": "Rückgängig (Strg+Z)",
   "edit.zoomIn": "Vergrößern (Strg + Scrollen)",
   "edit.zoomOut": "Verkleinern",
-  "edit.zoomReset": "Zoom zurücksetzen (Strg+0)"
+  "edit.zoomReset": "Zoom zurücksetzen (Strg+0)",
+  "ink.gold": "Gold",
+  "ink.silver": "Silber",
+  "studio.pen": "Stift",
+  "studio.pen.fountain": "Füller",
+  "studio.pen.ballpoint": "Kugelschreiber",
+  "studio.pen.marker": "Marker",
+  "sig.rotate": "Zum Drehen ziehen — Doppelklick setzt zurück",
+  "mobile.tools": "Werkzeuge",
+  "edit.dash": "Linienstil",
+  "edit.dash.solid": "Durchgezogen",
+  "edit.dash.dashed": "Gestrichelt",
+  "edit.dash.dotted": "Gepunktet"
 }

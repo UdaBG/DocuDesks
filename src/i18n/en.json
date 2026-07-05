@@ -163,5 +163,17 @@
   "undo.action": "Undo (Ctrl+Z)",
   "edit.zoomIn": "Zoom in (Ctrl + scroll)",
   "edit.zoomOut": "Zoom out",
-  "edit.zoomReset": "Reset zoom (Ctrl+0)"
+  "edit.zoomReset": "Reset zoom (Ctrl+0)",
+  "ink.gold": "Gold",
+  "ink.silver": "Silver",
+  "studio.pen": "Pen",
+  "studio.pen.fountain": "Fountain",
+  "studio.pen.ballpoint": "Ballpoint",
+  "studio.pen.marker": "Marker",
+  "sig.rotate": "Drag to rotate — double-click to reset",
+  "mobile.tools": "Tools",
+  "edit.dash": "Line style",
+  "edit.dash.solid": "Solid",
+  "edit.dash.dashed": "Dashed",
+  "edit.dash.dotted": "Dotted"
 }

@@ -163,5 +163,17 @@
   "undo.action": "Deshacer (Ctrl+Z)",
   "edit.zoomIn": "Acercar (Ctrl + rueda)",
   "edit.zoomOut": "Alejar",
-  "edit.zoomReset": "Restablecer zoom (Ctrl+0)"
+  "edit.zoomReset": "Restablecer zoom (Ctrl+0)",
+  "ink.gold": "Oro",
+  "ink.silver": "Plata",
+  "studio.pen": "Pluma",
+  "studio.pen.fountain": "Estilográfica",
+  "studio.pen.ballpoint": "Bolígrafo",
+  "studio.pen.marker": "Rotulador",
+  "sig.rotate": "Arrastra para girar — doble clic restablece",
+  "mobile.tools": "Herramientas",
+  "edit.dash": "Estilo de línea",
+  "edit.dash.solid": "Continua",
+  "edit.dash.dashed": "Discontinua",
+  "edit.dash.dotted": "Punteada"
 }

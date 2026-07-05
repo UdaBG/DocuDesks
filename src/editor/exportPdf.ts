@@ -1,10 +1,10 @@
-import { PDFDocument, degrees, rgb, type PDFFont, type PDFPage, type RGB } from 'pdf-lib'
+import { LineCapStyle, PDFDocument, degrees, rgb, type PDFFont, type PDFPage, type RGB } from 'pdf-lib'
 import fontkit from '@pdf-lib/fontkit'
 import { inkToSvgPath } from '../lib/drawing'
 import { dataUrlToBytes } from '../lib/imageUtils'
 import { resolveFont } from './fonts'
 import type { EditObj, EditSession, TextObj, Watermark } from './types'
-import { TEXT_BASELINE, TEXT_LINE_HEIGHT } from './types'
+import { dashPattern, TEXT_BASELINE, TEXT_LINE_HEIGHT } from './types'
 
 function hexToRgb(hex: string): RGB {
   const v = parseInt(hex.slice(1), 16)
@@ -150,6 +150,8 @@ function drawObject(page: PDFPage, o: EditObj, fonts: Map<string, PDFFont>) {
         color: o.fill ? hexToRgb(o.fill) : undefined,
         opacity: o.fill ? o.opacity : 0,
         borderOpacity: o.opacity,
+        borderDashArray: dashPattern(o.dash, o.strokeWidthPt),
+        borderLineCap: o.dash === 'dotted' ? LineCapStyle.Round : undefined,
       }
       if (o.kind === 'rect') {
         page.drawRectangle({
@@ -175,7 +177,15 @@ function drawObject(page: PDFPage, o: EditObj, fonts: Map<string, PDFFont>) {
       const start = { x: o.x1 * pw, y: ph - o.y1 * ph }
       const end = { x: o.x2 * pw, y: ph - o.y2 * ph }
       const color = hexToRgb(o.stroke)
-      page.drawLine({ start, end, thickness: o.strokeWidthPt, color, opacity: o.opacity })
+      page.drawLine({
+        start,
+        end,
+        thickness: o.strokeWidthPt,
+        color,
+        opacity: o.opacity,
+        dashArray: dashPattern(o.dash, o.strokeWidthPt),
+        lineCap: o.dash === 'dotted' ? LineCapStyle.Round : undefined,
+      })
       if (o.kind === 'arrow') {
         const angle = Math.atan2(start.y - end.y, start.x - end.x)
         const head = Math.max(o.strokeWidthPt * 4, 10)

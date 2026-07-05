@@ -1,3 +1,4 @@
+import { applySheen, inkHex, type InkValue } from './ink'
 import { trimCanvas } from './imageUtils'
 
 export interface SignatureFont {
@@ -20,8 +21,9 @@ export const SIGNATURE_FONTS: SignatureFont[] = [
 export async function renderTypedSignature(
   text: string,
   font: SignatureFont,
-  color: string,
+  ink: InkValue,
 ): Promise<HTMLCanvasElement | null> {
+  const color = inkHex(ink)
   const size = Math.round(120 * font.scale)
   const spec = `400 ${size}px "${font.family}"`
   await document.fonts.load(spec, text)
@@ -41,5 +43,7 @@ export async function renderTypedSignature(
   ctx.fillStyle = color
   ctx.textBaseline = 'middle'
   ctx.fillText(text, pad, height / 2)
-  return trimCanvas(canvas, 8, 10)
+  const trimmed = trimCanvas(canvas, 8, 10)
+  if (trimmed) applySheen(trimmed, ink)
+  return trimmed
 }

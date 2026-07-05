@@ -163,5 +163,17 @@
   "undo.action": "අහෝසි (Ctrl+Z)",
   "edit.zoomIn": "විශාල කරන්න (Ctrl + scroll)",
   "edit.zoomOut": "කුඩා කරන්න",
-  "edit.zoomReset": "සාමාන්‍ය ප්‍රමාණය (Ctrl+0)"
+  "edit.zoomReset": "සාමාන්‍ය ප්‍රමාණය (Ctrl+0)",
+  "ink.gold": "රන්",
+  "ink.silver": "රිදී",
+  "studio.pen": "පෑන",
+  "studio.pen.fountain": "ෆවුන්ටන්",
+  "studio.pen.ballpoint": "බෝල්පොයින්ට්",
+  "studio.pen.marker": "මාකර්",
+  "sig.rotate": "කරකැවීමට අදින්න — නැවත සැකසීමට දෙවරක් ක්ලික් කරන්න",
+  "mobile.tools": "මෙවලම්",
+  "edit.dash": "රේඛා විලාසය",
+  "edit.dash.solid": "ඝන",
+  "edit.dash.dashed": "කඩ ඉරි",
+  "edit.dash.dotted": "තිත්"
 }
