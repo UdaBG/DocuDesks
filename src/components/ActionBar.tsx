@@ -5,6 +5,7 @@ import { useEdit } from '../editor/editStore'
 import { buildEditedPdf } from '../editor/exportPdf'
 import { getPageCount } from '../lib/pdf'
 import { signedName } from '../lib/pdfSign'
+import { useMediaQuery } from '../lib/useMediaQuery'
 import { CheckIcon, FolderIcon, NibIcon, PrinterIcon, RedoIcon, UndoIcon, WarnIcon } from './icons'
 
 function editedName(original: string): string {
@@ -24,6 +25,13 @@ function EditActionBar() {
   const savedPath = useEdit((s) => s.savedPath)
   const setSavedPath = useEdit((s) => s.setSavedPath)
   const [busy, setBusy] = useState(false)
+  const narrow = useMediaQuery('(max-width: 760px)')
+
+  // typing on a phone: the keyboard already halves the screen — the whole
+  // footer steps aside so the document stays visible; tapping outside the
+  // text box commits it and brings the bar back
+  const editingId = session?.editingId ?? null
+  if (narrow && editingId) return null
 
   const hasEdits =
     !!session &&
@@ -78,7 +86,7 @@ function EditActionBar() {
   }
 
   return (
-    <footer className="actionbar">
+    <footer className="actionbar edit-actionbar">
       <div className="ab-status">
         {doc && session && (
           <span className="muted">{t('docs.pages', { count: session.pages.length })}</span>
@@ -109,23 +117,29 @@ function EditActionBar() {
           </>
         )}
       </div>
-      <div className="ab-right">
+      <div className="ab-history">
         <button
           className="ghost-btn"
           disabled={!session || session.undo.length === 0}
+          aria-label={t('edit.undo')}
+          title={t('edit.undo')}
           onClick={() => doc && undo(doc.id)}
         >
           <UndoIcon size={14} />
-          {t('edit.undo')}
+          <span className="btn-label">{t('edit.undo')}</span>
         </button>
         <button
           className="ghost-btn"
           disabled={!session || session.redo.length === 0}
+          aria-label={t('edit.redo')}
+          title={t('edit.redo')}
           onClick={() => doc && redo(doc.id)}
         >
           <RedoIcon size={14} />
-          {t('edit.redo')}
+          <span className="btn-label">{t('edit.redo')}</span>
         </button>
+      </div>
+      <div className="ab-actions">
         {window.signer.canPrint && (
           <button
             className="ghost-btn"

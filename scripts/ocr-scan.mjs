@@ -156,7 +156,7 @@ try {
   await shot('02-retype-on-scan.png')
 
   // ---- 3. after Apply to stack, retype must still work (image detection) ---
-  await domClick('.actionbar .ghost-btn:nth-last-child(2)') // "Apply to stack"
+  await domClick('.ab-actions .ghost-btn:nth-last-child(2)') // "Apply to stack"
   await waitFor(`${S}.docs[0].rev >= 1`, 'applied to stack')
   await sleep(1200)
   await evaluate(`(${E}.setTool('retype'), true)`)

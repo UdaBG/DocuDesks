@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useApp } from '../store'
+import { useEdit } from '../editor/editStore'
 import { CursorIcon, DocIcon, NibIcon, PenIcon, SquiggleIcon } from './icons'
 
 export type MobileTab = 'docs' | 'sign' | 'sigs'
@@ -15,6 +16,13 @@ export default function MobileNav({
   const docCount = useApp((s) => s.docs.length)
   const sigCount = useApp((s) => s.signatures.length)
   const view = useApp((s) => s.view)
+  const selectedDocId = useApp((s) => s.selectedDocId)
+  const editing = useEdit((s) =>
+    view === 'edit' && selectedDocId ? (s.sessions[selectedDocId]?.editingId ?? null) : null,
+  )
+
+  // typing on a phone: yield the vertical space to the document
+  if (editing) return null
 
   // the middle/right tabs change meaning with the view: stage + its options
   const tabs: { id: MobileTab; label: string; icon: React.ReactNode; badge?: number }[] = [

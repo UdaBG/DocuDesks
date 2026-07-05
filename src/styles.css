@@ -934,6 +934,18 @@ input[type='range'] {
   align-items: center;
   gap: 14px;
 }
+/* edit footer groups: on desktop they read as one right-aligned row */
+.edit-actionbar .ab-history {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.edit-actionbar .ab-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
 .btn-sign {
   padding: 11px 26px;
   font-size: 14.5px;
@@ -1174,6 +1186,52 @@ input[type='range'] {
 @media (prefers-reduced-motion: reduce) {
   .ocr-spinner {
     animation-duration: 2.4s;
+  }
+}
+
+/* 360dp-class phones: the top bar must still fit brand + language + view
+   toggle in ONE row — wrapping stretched the Sign/Edit toggle into its own
+   giant second row and cost ~45px of document space permanently */
+@media (max-width: 400px) {
+  .topbar {
+    gap: 6px 8px;
+    padding: 6px 8px;
+  }
+  .wordmark {
+    font-size: 19px;
+  }
+  .lite-badge {
+    font-size: 8px;
+    padding: 1px 3px;
+    transform: translateY(-4px);
+  }
+  .lang select {
+    padding: 5px 18px 5px 6px;
+    font-size: 11.5px;
+  }
+  .seg {
+    padding: 5px 9px;
+    font-size: 11.5px;
+  }
+  /* smaller controls overall — a 360dp screen has no room to spare */
+  .ghost-btn {
+    padding: 7px 10px;
+    font-size: 12.5px;
+  }
+  .btn-primary {
+    padding: 9px 12px;
+    font-size: 13px;
+  }
+  .chip {
+    font-size: 10px;
+  }
+  .actionbar {
+    padding: 6px 8px;
+    gap: 8px;
+  }
+  .mobile-tab {
+    font-size: 10px;
+    padding: 6px 0;
   }
 }
 
@@ -2107,6 +2165,36 @@ input[type='range'] {
     flex: 1;
     flex-wrap: wrap;
     gap: 8px;
+  }
+  /* icon-only undo/redo: the footer must never stack into a button tower */
+  .actionbar .btn-label {
+    display: none;
+  }
+
+  /* edit footer: deterministic two rows — status + history icons on the
+     first, Apply and Save sharing the full width on the second */
+  .edit-actionbar {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    row-gap: 8px;
+    column-gap: 8px;
+  }
+  .edit-actionbar .ab-history {
+    margin-left: 0;
+    gap: 6px;
+  }
+  .edit-actionbar .ab-actions {
+    grid-column: 1 / -1;
+    gap: 8px;
+  }
+  .edit-actionbar .ab-actions .ghost-btn,
+  .edit-actionbar .ab-actions .btn-primary {
+    flex: 1;
+    justify-content: center;
+  }
+  .edit-actionbar .ab-actions .btn-primary {
+    flex: 1.3;
   }
   .btn-sign {
     flex: 1;

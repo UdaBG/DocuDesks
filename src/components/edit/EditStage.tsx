@@ -1564,7 +1564,7 @@ export default function EditStage() {
         )}
       </div>
 
-      {session && <PagesStrip session={session} />}
+      {session && space.h >= 240 && <PagesStrip session={session} />}
     </section>
   )
 }
