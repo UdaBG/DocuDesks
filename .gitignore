@@ -25,3 +25,6 @@ samples/
 # Local scratch files
 image.png
 research.md
+
+# Regression screenshot output
+e2e-shots/
