@@ -175,5 +175,8 @@
   "edit.dash": "Linjestil",
   "edit.dash.solid": "Heldragen",
   "edit.dash.dashed": "Streckad",
-  "edit.dash.dotted": "Prickad"
+  "edit.dash.dotted": "Prickad",
+  "docs.protected": "Skyddad",
+  "stage.encrypted": "Lösenordsskyddad PDF — den sparade kopian behåller inte skyddet",
+  "edit.shapingWarn": "Denna skrift kan återges fel i den sparade PDF:en — glyfformning stöds inte ännu."
 }

@@ -23,8 +23,9 @@ const page = doc.addPage([595, 842])
 const helv = await doc.embedFont(StandardFonts.Helvetica)
 page.drawText('Regular page content', { x: 60, y: 780, size: 14, font: helv })
 const ctx = doc.context
-const makeAnnot = (x, y, text) => {
-  const ap = ctx.stream(`q BT /F0 16 Tf 0 0 0 rg 2 5 Td (${text}) Tj ET Q`, {
+const makeAnnot = (x, y, text, opaque = false) => {
+  const bg = opaque ? '1 1 1 rg 0 0 160 24 re f ' : ''
+  const ap = ctx.stream(`q ${bg}BT /F0 16 Tf 0 0 0 rg 2 5 Td (${text}) Tj ET Q`, {
     Type: 'XObject',
     Subtype: 'Form',
     BBox: [0, 0, 160, 24],
@@ -42,7 +43,9 @@ const makeAnnot = (x, y, text) => {
 }
 const covered = makeAnnot(60, 700, 'SN-COVERED')
 const visible = makeAnnot(60, 650, 'SN-VISIBLE')
-page.node.set(PDFName.of('Annots'), ctx.obj([covered, visible]))
+// opaque background: without flattening, signing under this erases the stamp
+const signOver = makeAnnot(60, 590, 'SN-SIGNOVER', true)
+page.node.set(PDFName.of('Annots'), ctx.obj([covered, visible, signOver]))
 const annotPdf = path.join(OUT_DIR, 'annotated.pdf')
 await writeFile(annotPdf, await doc.save())
 
@@ -180,6 +183,48 @@ try {
   if (postVisible > 120) fail(`uncovered annotation lost its appearance after flattening (darkest px ${postVisible})`)
   await shot('01-annotation-covered.png')
 
+  // ---- signing over an OPAQUE annotation: the stamp must stay on top -------
+  await evaluate(`(${S}.selectDoc(${S}.docs[0].id), true)`)
+  await evaluate(`(() => {
+    const c = document.createElement('canvas'); c.width = 400; c.height = 140
+    const g = c.getContext('2d')
+    g.strokeStyle = '#26357c'; g.lineWidth = 9; g.lineCap = 'round'
+    g.beginPath(); g.moveTo(20, 100); g.bezierCurveTo(90, 10, 150, 130, 220, 50)
+    g.bezierCurveTo(260, 10, 330, 120, 380, 60); g.stroke()
+    ${S}.addSignature({ name: 'T', dataUrl: c.toDataURL('image/png'), width: c.width, height: c.height })
+    return true
+  })()`)
+  // stamp box overlapping the opaque annotation (PDF y 590..614)
+  await evaluate(`(${S}.addExtraStamp({ x: 0.10, yb: ${(842 - 585) / 842}, w: 0.30 }), true)`)
+  await evaluate(`${S}.signAll()`)
+  await waitFor(`${S}.result && ${S}.result.signed >= 1`, 'signed over annotation')
+  const signedPath = await evaluate(`${S}.result.paths[0]`)
+  await evaluate(`(${S}.dismissResult(), true)`)
+  await evaluate(`(${S}.removeExtraStampEverywhere(${S}.extraStamps[0].id), true)`)
+  await evaluate(`(async () => {
+    const bytes = await window.signer.readFile(${JSON.stringify(signedPath)})
+    await ${S}.addFiles([{ name: 'signed-annot.pdf', bytes }])
+    const docs = window.__signerStore.getState().docs
+    window.__signerStore.getState().selectDoc(docs[docs.length - 1].id)
+  })()`)
+  await sleep(1500)
+  // signature ink (blue) must be present inside the annotation's rectangle
+  const bluish = await evaluate(`(() => {
+    const c = document.querySelector('.sheet canvas')
+    const g = c.getContext('2d', { willReadFrequently: true })
+    const x0 = Math.floor(${62 / 595} * c.width), y0 = Math.floor(${(842 - 612) / 842} * c.height)
+    const w = Math.floor(${156 / 595} * c.width), h = Math.floor(${20 / 842} * c.height)
+    const d = g.getImageData(x0, y0, w, h).data
+    let n = 0
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 2] - d[i] > 30 && d[i + 2] > 80) n++
+    }
+    return n
+  })()`)
+  console.log('signature-ink pixels inside opaque annotation rect:', bluish)
+  if (bluish < 30) fail(`signature was painted over by the opaque annotation (${bluish} ink px)`)
+  await shot('01b-sign-over-annotation.png')
+
   // ---- mobile: tab away and back keeps the zoomed scroll position ----------
   await send('Emulation.setDeviceMetricsOverride', { width: 412, height: 915, deviceScaleFactor: 2, mobile: true })
   await evaluate(`(${S}.selectDoc(${S}.docs[0].id), true)`)
@@ -194,6 +239,7 @@ try {
   await sleep(300)
   const set0 = await evaluate(`(() => { const el = document.querySelector('.edit-scroll'); return [el.scrollLeft, el.scrollTop, el.scrollWidth, el.clientWidth] })()`)
   console.log('scroll before tab switch:', JSON.stringify(set0))
+  console.log('debug before switch:', JSON.stringify(await evaluate(`window.__editScrollDebug()`)))
   await domClick('.mobile-nav .mobile-tab:nth-child(3)') // Tools
   await sleep(500)
   const hidden = await evaluate(`getComputedStyle(document.querySelector('.edit-stage')).display`)
@@ -204,7 +250,7 @@ try {
   for (let i = 0; i < 8; i++) {
     await sleep(300)
     pos = await evaluate(`(() => { const el = document.querySelector('.edit-scroll'); return [el.scrollLeft, el.scrollTop] })()`)
-    console.log(`scroll ${(i + 1) * 300}ms after return:`, JSON.stringify(pos))
+    console.log(`scroll ${(i + 1) * 300}ms after return:`, JSON.stringify(pos), JSON.stringify(await evaluate(`window.__editScrollDebug()`)))
     if (pos[0] > 0 || pos[1] > 0) break
   }
   if (Math.abs(pos[0] - 180) > 4 || Math.abs(pos[1] - 420) > 4) fail(`scroll not restored: ${pos}`)

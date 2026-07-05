@@ -45,6 +45,23 @@ export interface RenderedPage {
 }
 
 /**
+ * Cheap check for password/permission protection: /Encrypt lives in the
+ * trailer dictionary, which sits at the tail (and, for linearized files, is
+ * mirrored near the head). A scan of those regions is enough to warn the
+ * user — it never blocks anything.
+ */
+export function looksEncrypted(bytes: Uint8Array): boolean {
+  const probe = (from: number, to: number): boolean => {
+    let s = ''
+    for (let i = Math.max(0, from); i < Math.min(bytes.length, to); i++) {
+      s += String.fromCharCode(bytes[i])
+    }
+    return s.includes('/Encrypt')
+  }
+  return probe(bytes.length - 4096, bytes.length) || probe(0, 2048)
+}
+
+/**
  * Render one page to a canvas that fits inside maxWidth x maxHeight CSS px,
  * at device-pixel-ratio resolution for crisp text.
  */

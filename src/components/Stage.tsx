@@ -280,6 +280,8 @@ export default function Stage() {
       if (doc.smart) hint = { text: t('stage.smartFound'), kind: 'smart' }
       else if (doc.smart === null) hint = { text: t('stage.smartNone'), kind: 'warn' }
     }
+    // protection warning fills the slot only when nothing actionable is shown
+    if (!hint && doc.encrypted) hint = { text: t('stage.encrypted'), kind: 'warn' }
   }
 
   if (!docs.length) {

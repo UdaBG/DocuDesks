@@ -80,6 +80,8 @@ export interface SigDoc {
   excludedStamps?: string[]
   /** the bulk/primary stamp was removed for this document */
   primaryDisabled?: boolean
+  /** the file carries password/permission protection — output copies won't */
+  encrypted?: boolean
   signedPath?: string
   error?: string
 }

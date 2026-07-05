@@ -2,6 +2,7 @@ import { degrees, PDFDocument, type PDFImage } from 'pdf-lib'
 import type { Placement, SavedSignature } from '../types'
 import { fitStampBox, resolvePageIndex } from '../types'
 import { dataUrlToBytes } from './imageUtils'
+import { flattenAnnotations } from './pdfFlatten'
 
 export interface StampInput {
   signature: SavedSignature
@@ -16,6 +17,7 @@ export interface StampInput {
 export async function applyStamps(bytes: Uint8Array, stamps: StampInput[]): Promise<Uint8Array> {
   const pdf = await PDFDocument.load(bytes.slice(), { ignoreEncryption: true })
   const embedded = new Map<string, PDFImage>()
+  const flattened = new Set<number>()
 
   for (const stamp of stamps) {
     let png = embedded.get(stamp.signature.id)
@@ -25,6 +27,12 @@ export async function applyStamps(bytes: Uint8Array, stamps: StampInput[]): Prom
     }
     const pageIndex = resolvePageIndex(stamp.placement, pdf.getPageCount())
     const page = pdf.getPage(pageIndex)
+    if (!flattened.has(pageIndex)) {
+      // annotations paint above page content — flatten them first so an
+      // opaque one can never cover the signature drawn below
+      flattenAnnotations(page)
+      flattened.add(pageIndex)
+    }
     const { width: pw, height: ph } = page.getSize()
     const box = fitStampBox(stamp.placement, stamp.signature.width, stamp.signature.height, pw, ph)
     const rot = stamp.placement.rot ?? 0

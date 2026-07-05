@@ -175,5 +175,8 @@
   "edit.dash": "Style de ligne",
   "edit.dash.solid": "Continue",
   "edit.dash.dashed": "Tirets",
-  "edit.dash.dotted": "Pointillés"
+  "edit.dash.dotted": "Pointillés",
+  "docs.protected": "Protégé",
+  "stage.encrypted": "PDF protégé par mot de passe — la copie enregistrée ne conservera pas la protection",
+  "edit.shapingWarn": "Cette écriture peut mal s’afficher dans le PDF enregistré — le façonnage des glyphes n’est pas encore pris en charge."
 }

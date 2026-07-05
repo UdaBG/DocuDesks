@@ -175,5 +175,8 @@
   "edit.dash": "Estilo de línea",
   "edit.dash.solid": "Continua",
   "edit.dash.dashed": "Discontinua",
-  "edit.dash.dotted": "Punteada"
+  "edit.dash.dotted": "Punteada",
+  "docs.protected": "Protegido",
+  "stage.encrypted": "PDF protegido con contraseña — la copia guardada no conservará la protección",
+  "edit.shapingWarn": "Esta escritura puede no mostrarse bien en el PDF guardado — aún no se admite la conformación de glifos."
 }

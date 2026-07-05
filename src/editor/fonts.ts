@@ -1,4 +1,12 @@
 import { StandardFonts } from 'pdf-lib'
+import libSansR from '../assets/fonts/LiberationSans-Regular.ttf?url'
+import libSansB from '../assets/fonts/LiberationSans-Bold.ttf?url'
+import libSansI from '../assets/fonts/LiberationSans-Italic.ttf?url'
+import libSansBI from '../assets/fonts/LiberationSans-BoldItalic.ttf?url'
+import libSerifR from '../assets/fonts/LiberationSerif-Regular.ttf?url'
+import libSerifB from '../assets/fonts/LiberationSerif-Bold.ttf?url'
+import libSerifI from '../assets/fonts/LiberationSerif-Italic.ttf?url'
+import libSerifBI from '../assets/fonts/LiberationSerif-BoldItalic.ttf?url'
 
 /**
  * Fonts for the text tool.
@@ -89,6 +97,34 @@ const FILE_FALLBACK: { id: string; label: string; css: string; file: string; bol
   { id: 'file:courier-new', label: 'Courier New', css: '"Courier New", monospace', file: 'cour.ttf', bold: 'courbd.ttf', italic: 'couri.ttf', boldItalic: 'courbi.ttf' },
 ]
 
+/**
+ * Bundled metric-compatible stand-ins (Liberation, SIL OFL) for platforms
+ * where neither queryLocalFonts nor the Windows font files exist — Android
+ * in particular. Keyed by the same ids as FILE_FALLBACK so font matching
+ * and cross-device documents behave identically.
+ */
+const BUNDLED: Record<
+  string,
+  { label: string; css: string; regular: string; bold: string; italic: string; boldItalic: string }
+> = {
+  'file:arial': {
+    label: 'Arial',
+    css: 'Arial, "Liberation Sans", sans-serif',
+    regular: libSansR,
+    bold: libSansB,
+    italic: libSansI,
+    boldItalic: libSansBI,
+  },
+  'file:times-nr': {
+    label: 'Times New Roman',
+    css: '"Times New Roman", "Liberation Serif", serif',
+    regular: libSerifR,
+    bold: libSerifB,
+    italic: libSerifI,
+    boldItalic: libSerifBI,
+  },
+}
+
 const facesByFamily = new Map<string, LocalFontData[]>()
 const bytesCache = new Map<string, Uint8Array>()
 let fontList: EditorFont[] | null = null
@@ -143,6 +179,12 @@ export async function availableFonts(): Promise<EditorFont[]> {
           /* platform without that path */
         }
       }
+      // no installed files reachable (Android/iOS): the bundled stand-ins
+      for (const [id, b] of Object.entries(BUNDLED)) {
+        if (!fileFallback.some((f) => f.id === id)) {
+          fileFallback.push({ id, label: b.label, css: b.css, source: 'file', family: b.label })
+        }
+      }
     }
     out.push(...fileFallback)
   }
@@ -179,6 +221,22 @@ function pickFace(faces: LocalFontData[], weight: number, italic: boolean): Loca
 export interface ResolvedFont {
   std?: StandardFonts
   bytes?: Uint8Array
+}
+
+async function resolveBundled(id: string, weight: number, italic: boolean): Promise<Uint8Array | null> {
+  const b = BUNDLED[id]
+  if (!b) return null
+  const url = weight >= 600 ? (italic ? b.boldItalic : b.bold) : italic ? b.italic : b.regular
+  let bytes = bytesCache.get(url)
+  if (!bytes) {
+    try {
+      bytes = new Uint8Array(await (await fetch(url)).arrayBuffer())
+    } catch {
+      return null
+    }
+    bytesCache.set(url, bytes)
+  }
+  return bytes
 }
 
 /**
@@ -225,11 +283,15 @@ export async function resolveFont(
           bytes = await window.signer.readFile(FONTS_DIR + file)
           bytesCache.set(file, bytes)
         } catch {
+          const bundled = await resolveBundled(font.id, weight, italic)
+          if (bundled) return { bytes: bundled }
           return { std: STD_VARIANTS['std:helvetica'][stdIndex] }
         }
       }
       return { bytes }
     }
+    const bundled = await resolveBundled(font.id, weight, italic)
+    if (bundled) return { bytes: bundled }
   }
   return { std: STD_VARIANTS['std:helvetica'][stdIndex] }
 }

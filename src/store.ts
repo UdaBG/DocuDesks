@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import i18next, { matchLanguage, type LanguageCode } from './i18n'
 import type { ExtraStamp, Placement, SavedSignature, SigDoc, SignMode } from './types'
 import { effectivePlacement, resolvePageIndex, uid } from './types'
-import { getPageCount } from './lib/pdf'
+import { getPageCount, looksEncrypted } from './lib/pdf'
 import { detectSignatureSpot } from './lib/smartDetect'
 import { applyStamps, signedName, type StampInput } from './lib/pdfSign'
 import { useEdit } from './editor/editStore'
@@ -216,6 +216,7 @@ export const useApp = create<AppState>((set, get) => ({
           pageCount,
           rev: 0,
           status: 'ready',
+          ...(looksEncrypted(f.bytes) ? { encrypted: true } : {}),
         })
       } catch {
         added.push({

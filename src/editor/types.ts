@@ -34,6 +34,18 @@ export interface InkObj extends BaseObj {
   opacity: number
 }
 
+/**
+ * Scripts that need glyph shaping or reordering (Arabic joining, Indic and
+ * Sinhala conjuncts, Hebrew RTL, Thai mark stacking) — pdf-lib places glyphs
+ * one-by-one and cannot do this yet, so drawn text in these ranges will look
+ * wrong in the saved PDF. Used to warn, never to block.
+ */
+export function needsComplexShaping(text: string): boolean {
+  // Hebrew, Arabic + extensions, Indic scripts incl. Sinhala, Thai/Lao,
+  // Myanmar, Khmer
+  return /[֐-ࣿऀ-໿က-႟ក-៿]/.test(text)
+}
+
 /** Stroke pattern for shapes and lines. */
 export type DashStyle = 'solid' | 'dashed' | 'dotted'
 

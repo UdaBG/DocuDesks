@@ -175,5 +175,8 @@
   "edit.dash": "රේඛා විලාසය",
   "edit.dash.solid": "ඝන",
   "edit.dash.dashed": "කඩ ඉරි",
-  "edit.dash.dotted": "තිත්"
+  "edit.dash.dotted": "තිත්",
+  "docs.protected": "ආරක්ෂිතයි",
+  "stage.encrypted": "මුරපදයෙන් ආරක්ෂිත PDF — සුරකින පිටපතේ ආරක්ෂාව රැඳෙන්නේ නැත",
+  "edit.shapingWarn": "මෙම අක්ෂර සුරකින PDF හි නිවැරදිව නොපෙන්විය හැක — අකුරු හැඩගැස්වීම තවම සහාය නොදක්වයි."
 }

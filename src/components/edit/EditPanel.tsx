@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useApp } from '../../store'
 import { useEdit } from '../../editor/editStore'
 import { availableFonts, hasFullFontList, type EditorFont } from '../../editor/fonts'
-import type { DashStyle, PenVariant, TextObj } from '../../editor/types'
+import { needsComplexShaping, type DashStyle, type PenVariant, type TextObj } from '../../editor/types'
 import ColorField from './ColorField'
 import WatermarkDialog from './WatermarkDialog'
 import { WatermarkIcon } from '../icons'
@@ -124,6 +124,9 @@ export default function EditPanel() {
                 </span>
               )}
             </label>
+            {textObj && needsComplexShaping(textObj.text) && (
+              <p className="shaping-warn">{t('edit.shapingWarn')}</p>
+            )}
 
             <div className="field">
               <span className="field-label">{t('edit.textStyle')}</span>

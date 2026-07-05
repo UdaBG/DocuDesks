@@ -362,7 +362,9 @@ export default function EditStage() {
   useEffect(() => {
     const was = prevSpaceW.current
     prevSpaceW.current = space.w
-    if (was === 0 && space.w > 0 && (lastScrollRef.current.l || lastScrollRef.current.t)) {
+    if (was > 0 && space.w === 0 && (lastScrollRef.current.l || lastScrollRef.current.t)) {
+      // the stage just hid: snapshot NOW — on re-show the browser announces
+      // the zeroed offsets with a scroll event before we could read them
       pendingRestoreRef.current = { ...lastScrollRef.current }
     }
   }, [space.w])
@@ -378,6 +380,17 @@ export default function EditStage() {
       }
     })
   }, [view])
+
+  // automation/debug hook (CDP regressions inspect scroll bookkeeping)
+  useEffect(() => {
+    ;(window as unknown as Record<string, unknown>).__editScrollDebug = () => ({
+      last: { ...lastScrollRef.current },
+      pending: pendingRestoreRef.current ? { ...pendingRestoreRef.current } : null,
+      prevW: prevSpaceW.current,
+      hasView: !!view,
+      space: { ...space },
+    })
+  })
 
   /**
    * Smooth zoom: scale instantly with CSS (anchored at the pointer), then

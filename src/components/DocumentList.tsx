@@ -61,6 +61,11 @@ export default function DocumentList() {
                       : d.status === 'no-target'
                         ? t('docs.status.noTarget')
                         : t('docs.pages', { count: d.pageCount })}
+                  {d.encrypted && (
+                    <span className="chip chip-amber doc-protected" title={t('stage.encrypted')}>
+                      {t('docs.protected')}
+                    </span>
+                  )}
                 </span>
               </span>
             </button>
