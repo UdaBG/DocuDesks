@@ -34,6 +34,10 @@ interface EditState {
   sampling: boolean
   setSampling(v: boolean): void
 
+  /** OCR for retype: null = auto (pages that look like scans), 'on' = force, 'off' = never */
+  ocrOverride: 'on' | 'off' | null
+  setOcrOverride(v: 'on' | 'off' | null): void
+
   openSession(doc: SigDoc): void
   dropSession(docId: string): void
   /** bring back a stashed session (undoing a document removal) */
@@ -104,6 +108,8 @@ export const useEdit = create<EditState>((set, get) => {
     savedPath: null,
     sampling: false,
     setSampling: (sampling) => set({ sampling }),
+    ocrOverride: null,
+    setOcrOverride: (ocrOverride) => set({ ocrOverride }),
 
     openSession(doc) {
       if (get().sessions[doc.id]) return

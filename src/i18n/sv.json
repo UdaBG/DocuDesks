@@ -180,5 +180,8 @@
   "stage.encrypted": "Lösenordsskyddad PDF — den sparade kopian behåller inte skyddet",
   "edit.shapingWarn": "Denna skrift kan återges fel i den sparade PDF:en — glyfformning stöds inte ännu.",
   "edit.ocrReading": "Läser skannad text…",
-  "error.unexpected": "Något gick fel: {{message}}"
+  "error.unexpected": "Något gick fel: {{message}}",
+  "edit.ocr.auto": "Textigenkänning (OCR): automatisk på skannade sidor — klicka för att tvinga på",
+  "edit.ocr.on": "Textigenkänning (OCR): på för alla sidor — klicka för att stänga av",
+  "edit.ocr.off": "Textigenkänning (OCR): av — klicka för automatisk"
 }

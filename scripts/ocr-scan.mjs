@@ -60,6 +60,7 @@ const waitFor = async (expr, label, ms = 45000) => {
     await sleep(400)
   }
 }
+const domClick = (sel) => evaluate(`(document.querySelector('${sel}').click(), true)`)
 const fail = (msg) => {
   console.error('FAIL:', msg)
   process.exitCode = 1
@@ -135,7 +136,7 @@ try {
     const s = ${E}.sessions['${docId}']
     const textObj = s.objects.find(o => o.id === s.editingId)
     const cover = s.objects.find(o => o.kind === 'whiteout')
-    return JSON.stringify({ text: textObj?.text, fill: cover?.fill, color: textObj?.color })
+    return JSON.stringify({ text: textObj?.text, fill: cover?.fill, color: textObj?.color, sizePt: textObj?.sizePt })
   })()`)
   console.log('retype on scan:', state)
   const st = JSON.parse(state)
@@ -148,7 +149,65 @@ try {
       fail(`cover tone ${st.fill} far from the scan's #f4f1e8 paper`)
     }
   }
+  // the fake scan draws 28 px text on a 1190 px page mapped to 595 pt -> 14 pt;
+  // line-geometry sizing must land near it (word-box sizing came out ~9 pt)
+  console.log('retype sizePt:', st.sizePt)
+  if (!st.sizePt || st.sizePt < 11.5 || st.sizePt > 17) fail(`retype size ${st.sizePt}pt, expected ~14pt`)
   await shot('02-retype-on-scan.png')
+
+  // ---- 3. after Apply to stack, retype must still work (image detection) ---
+  await domClick('.actionbar .ghost-btn:nth-last-child(2)') // "Apply to stack"
+  await waitFor(`${S}.docs[0].rev >= 1`, 'applied to stack')
+  await sleep(1200)
+  await evaluate(`(${E}.setTool('retype'), true)`)
+  // "Employee ID" row: canvas y baseline 160+4*64=416
+  const fy2 = (416 - 10) / 1684
+  await evaluate(`(() => {
+    const el = document.querySelector('.edit-overlay')
+    const r = el.getBoundingClientRect()
+    const ev = (type) => el.dispatchEvent(new PointerEvent(type, {
+      bubbles: true, pointerId: 1, pointerType: 'mouse', pressure: 0.5, buttons: 1,
+      clientX: r.left + ${fx} * r.width, clientY: r.top + ${fy2} * r.height,
+    }))
+    ev('pointerdown'); ev('pointerup')
+    return true
+  })()`)
+  await waitFor(
+    `(() => { const s = ${E}.sessions['${docId}']; return s && s.editingId })()`,
+    'retype after apply (image-based scan detection)',
+  )
+  const text2 = await evaluate(`(() => {
+    const s = ${E}.sessions['${docId}']
+    return s.objects.find(o => o.id === s.editingId)?.text
+  })()`)
+  console.log('retype after apply:', JSON.stringify(text2))
+  if (!/employee/i.test(text2 ?? '')) fail(`retype after apply should read "Employee ID", got "${text2}"`)
+  await evaluate(`(() => { document.querySelector('.eo-textarea')?.blur(); return true })()`)
+  await sleep(300)
+
+  // ---- 4. rapid clicks: only the LAST one opens a box ----------------------
+  await evaluate(`(${S}.selectDoc('${docId}'), ${E}.setTool('retype'), true)`)
+  const before = await evaluate(`${E}.sessions['${docId}'].objects.length`)
+  // three quick clicks on different rows; recognition is cached, but the
+  // stale-click guard must still ensure a single new cover+text pair
+  for (const row of [3, 5, 7]) {
+    const fyr = (160 + row * 64 - 10) / 1684
+    await evaluate(`(() => {
+      const el = document.querySelector('.edit-overlay')
+      const r = el.getBoundingClientRect()
+      const ev = (type) => el.dispatchEvent(new PointerEvent(type, {
+        bubbles: true, pointerId: 1, pointerType: 'mouse', pressure: 0.5, buttons: 1,
+        clientX: r.left + ${fx} * r.width, clientY: r.top + ${fyr} * r.height,
+      }))
+      ev('pointerdown'); ev('pointerup')
+      return true
+    })()`)
+  }
+  await sleep(2500)
+  const after = await evaluate(`${E}.sessions['${docId}'].objects.length`)
+  const added = after - before
+  console.log('objects added by 3 rapid clicks:', added)
+  if (added > 4) fail(`rapid clicks stacked ${added} objects — replay guard failed`)
 
   console.log(process.exitCode ? 'DONE WITH FAILURES' : 'ALL CHECKS PASSED')
 } catch (e) {

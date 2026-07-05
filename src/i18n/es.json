@@ -180,5 +180,8 @@
   "stage.encrypted": "PDF protegido con contraseña — la copia guardada no conservará la protección",
   "edit.shapingWarn": "Esta escritura puede no mostrarse bien en el PDF guardado — aún no se admite la conformación de glifos.",
   "edit.ocrReading": "Leyendo el texto escaneado…",
-  "error.unexpected": "Algo salió mal: {{message}}"
+  "error.unexpected": "Algo salió mal: {{message}}",
+  "edit.ocr.auto": "Reconocimiento de texto (OCR): automático en páginas escaneadas — clic para forzarlo",
+  "edit.ocr.on": "Reconocimiento de texto (OCR): activado para todas las páginas — clic para desactivar",
+  "edit.ocr.off": "Reconocimiento de texto (OCR): desactivado — clic para automático"
 }

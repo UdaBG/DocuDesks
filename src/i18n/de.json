@@ -180,5 +180,8 @@
   "stage.encrypted": "Passwortgeschütztes PDF — die gespeicherte Kopie behält den Schutz nicht",
   "edit.shapingWarn": "Diese Schrift wird im gespeicherten PDF evtl. nicht korrekt dargestellt — Glyphen-Shaping wird noch nicht unterstützt.",
   "edit.ocrReading": "Gescannter Text wird gelesen…",
-  "error.unexpected": "Etwas ist schiefgelaufen: {{message}}"
+  "error.unexpected": "Etwas ist schiefgelaufen: {{message}}",
+  "edit.ocr.auto": "Texterkennung (OCR): automatisch auf gescannten Seiten — Klick erzwingt sie",
+  "edit.ocr.on": "Texterkennung (OCR): für alle Seiten an — Klick schaltet aus",
+  "edit.ocr.off": "Texterkennung (OCR): aus — Klick für automatisch"
 }

@@ -9,6 +9,7 @@ import {
   LineIcon,
   PenIcon,
   RetypeIcon,
+  ScanTextIcon,
   SquareIcon,
   TextIcon,
   WhiteoutIcon,
@@ -31,6 +32,11 @@ export default function EditToolbar() {
   const { t } = useTranslation()
   const tool = useEdit((s) => s.tool)
   const setTool = useEdit((s) => s.setTool)
+  const ocrOverride = useEdit((s) => s.ocrOverride)
+  const setOcrOverride = useEdit((s) => s.setOcrOverride)
+  const ocrLabel = t(
+    ocrOverride === 'on' ? 'edit.ocr.on' : ocrOverride === 'off' ? 'edit.ocr.off' : 'edit.ocr.auto',
+  )
   return (
     <div className="edit-toolbar" role="toolbar" aria-label="Editing tools">
       {TOOLS.map(({ id, icon: Icon, key, sc }) => (
@@ -44,6 +50,15 @@ export default function EditToolbar() {
           <Icon size={17} />
         </button>
       ))}
+      <span className="edit-toolbar-sep" />
+      <button
+        className={`edit-tool ocr-toggle${ocrOverride === 'on' ? ' active' : ''}${ocrOverride === 'off' ? ' off' : ''}`}
+        title={ocrLabel}
+        aria-label={ocrLabel}
+        onClick={() => setOcrOverride(ocrOverride === null ? 'on' : ocrOverride === 'on' ? 'off' : null)}
+      >
+        <ScanTextIcon size={17} />
+      </button>
     </div>
   )
 }

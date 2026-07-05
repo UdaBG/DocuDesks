@@ -210,14 +210,22 @@ export async function detectSignatureSpot(bytes: Uint8Array): Promise<Placement 
         pieces.push({ str: item.str, x: t[4], y: t[5], w: item.width, h: item.height || Math.hypot(t[2], t[3]) })
       }
 
-      // A scan has no text layer: OCR fills in the words, and a raster pass
-      // finds the ruled lines (which are pixels here, not vector strokes).
-      // Every rule below then works on scans unchanged.
+      // A scan needs OCR: either the page has no text layer at all, or it is
+      // one big image with a thin text layer on top (a scan that was already
+      // edited). Recognized words merge in under any real text, and a raster
+      // pass finds ruled lines (pixels here, not vector strokes) — every
+      // rule below then works on scans unchanged.
+      const drawings = await collectDrawings(page).catch(() => ({ lines: [], images: [] }))
       let scanned: OcrPageResult | null = null
-      if (isScannedText(pieces)) {
+      const textLen = pieces.reduce((n, q) => n + q.str.trim().length, 0)
+      const bigImage = drawings.images.some((im) => im.w * im.h >= pageW * pageH * 0.55)
+      if (isScannedText(pieces) || (bigImage && textLen < 600)) {
         try {
           scanned = await ocrPage(page)
-          pieces.push(...scanned.pieces)
+          const overlap = (a: TextPiece, b: TextPiece) =>
+            Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x) > Math.min(a.w, b.w) * 0.3 &&
+            Math.abs(a.y - b.y) < Math.max(a.h, b.h) * 0.8
+          pieces.push(...scanned.pieces.filter((o) => !pieces.some((r) => overlap(o, r))))
         } catch {
           /* OCR unavailable (e.g. no WASM SIMD) — detect what we can without it */
         }
@@ -325,7 +333,6 @@ export async function detectSignatureSpot(bytes: Uint8Array): Promise<Placement 
 
       // --- 6: drawn horizontal lines and wide flat images -------------------
       try {
-        const drawings = await collectDrawings(page)
         const lines = scanned ? [...drawings.lines, ...scanned.lines] : drawings.lines
         const images = scanned ? [] : drawings.images // a scan IS one big image
         for (const line of lines) {

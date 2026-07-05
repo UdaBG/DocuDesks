@@ -180,5 +180,8 @@
   "stage.encrypted": "PDF protégé par mot de passe — la copie enregistrée ne conservera pas la protection",
   "edit.shapingWarn": "Cette écriture peut mal s’afficher dans le PDF enregistré — le façonnage des glyphes n’est pas encore pris en charge.",
   "edit.ocrReading": "Lecture du texte numérisé…",
-  "error.unexpected": "Une erreur est survenue : {{message}}"
+  "error.unexpected": "Une erreur est survenue : {{message}}",
+  "edit.ocr.auto": "Reconnaissance de texte (OCR) : automatique sur les pages numérisées — cliquer pour forcer",
+  "edit.ocr.on": "Reconnaissance de texte (OCR) : activée pour toutes les pages — cliquer pour désactiver",
+  "edit.ocr.off": "Reconnaissance de texte (OCR) : désactivée — cliquer pour automatique"
 }

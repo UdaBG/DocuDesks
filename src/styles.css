@@ -1115,6 +1115,57 @@ input[type='range'] {
   color: #bb3a30;
 }
 
+/* OCR progress veil (edit stage) */
+.ocr-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: grid;
+  place-items: center;
+  background: rgba(18, 22, 31, 0.28);
+}
+.ocr-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-radius: 12px;
+  background: rgba(18, 22, 31, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #e8ebf2;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+}
+.ocr-spinner {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 2.5px solid rgba(255, 255, 255, 0.25);
+  border-top-color: #e8ebf2;
+  animation: ocr-spin 0.9s linear infinite;
+}
+@keyframes ocr-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ocr-spinner {
+    animation-duration: 2.4s;
+  }
+}
+
+.edit-toolbar-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 4px 3px;
+  background: rgba(255, 255, 255, 0.16);
+}
+.edit-tool.ocr-toggle.off {
+  opacity: 0.35;
+}
+
 /* dash-style toggles (edit panel shapes) */
 .dash-toggles {
   display: flex;

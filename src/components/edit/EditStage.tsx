@@ -7,7 +7,7 @@ import { dashPattern, TEXT_BASELINE, TEXT_LINE_HEIGHT, textStyleFingerprint } fr
 import { uid } from '../../types'
 import type { PDFPageProxy } from 'pdfjs-dist'
 import { openPdf, renderPage, type OpenedPdf } from '../../lib/pdf'
-import { isScannedText, ocrPage } from '../../lib/ocr'
+import { ocrPage, pageLooksScanned, setOcrProgress } from '../../lib/ocr'
 import { inkToSvgPath, PEN_PROFILES } from '../../lib/drawing'
 import { fontById, matchFontFromPdf } from '../../editor/fonts'
 import EditToolbar from './EditToolbar'
@@ -44,14 +44,24 @@ interface TextPiece {
   w: number
   h: number
   fontName?: string
+  /** piece came from OCR (no font info; covers must match the scan's paper) */
+  ocr?: boolean
 }
 
 interface PageText {
   pieces: TextPiece[]
   /** pdf.js getTextContent styles: internal font id -> generic family */
   families: Record<string, string | undefined>
-  /** pieces came from OCR — the page is a scan with no text layer */
-  scanned?: boolean
+}
+
+/** Do two pieces occupy the same spot? (used to merge OCR under real text) */
+function piecesOverlap(
+  a: { x: number; y: number; w: number; h: number },
+  b: { x: number; y: number; w: number; h: number },
+): boolean {
+  const ix = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)
+  if (ix <= Math.min(a.w, b.w) * 0.3) return false
+  return Math.abs(a.y - b.y) < Math.max(a.h, b.h) * 0.8
 }
 
 /**
@@ -332,6 +342,11 @@ export default function EditStage() {
   const viewRef = useRef<PageView | null>(null)
   const [space, setSpace] = useState({ w: 0, h: 0 })
   const [ocrBusy, setOcrBusy] = useState(false)
+  const [ocrPct, setOcrPct] = useState(0)
+  /** in-flight page-text builds — rapid retype clicks share one recognition */
+  const ocrJobsRef = useRef(new Map<string, Promise<PageText>>())
+  /** click generation — only the newest retype click opens a box */
+  const retypeSeqRef = useRef(0)
   const openedRef = useRef<{ key: string; opened: OpenedPdf } | null>(null)
   const [view, setView] = useState<PageView | null>(null)
   /** magnifier loupe while color-sampling: overlay CSS position + source device px */
@@ -428,6 +443,22 @@ export default function EditStage() {
       }
     })
   }, [view])
+
+  // switching the OCR mode changes what a page's text set means
+  const ocrOverride = useEdit((s) => s.ocrOverride)
+  useEffect(() => {
+    textCacheRef.current.clear()
+    ocrJobsRef.current.clear()
+  }, [ocrOverride])
+
+  // pre-warm recognition the moment the retype tool is armed on this page,
+  // so the first click doesn't pay the OCR wait
+  useEffect(() => {
+    if (tool !== 'retype' || !view) return
+    const job = loadPageText()
+    if (job) void job.catch(() => undefined)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tool, view?.pageId, ocrOverride])
 
   // automation/debug hook (CDP regressions inspect scroll bookkeeping)
   useEffect(() => {
@@ -529,6 +560,7 @@ export default function EditStage() {
         openedRef.current = null
         if (prev) void prev.opened.close()
         textCacheRef.current.clear()
+        ocrJobsRef.current.clear()
         let opened: OpenedPdf
         try {
           opened = await openPdf(doc.bytes)
@@ -690,6 +722,70 @@ export default function EditStage() {
     [],
   )
 
+  /**
+   * Text pieces for the current page: the text layer plus, on pages that
+   * look like scans (or with OCR forced on), recognized words merged in.
+   * Single-flight per page — rapid clicks share one recognition — and
+   * cached until the document or the OCR mode changes.
+   */
+  function loadPageText(): Promise<PageText> | null {
+    if (!doc || !pageRef || pageRef.src.type !== 'orig' || !openedRef.current) return null
+    const hit = textCacheRef.current.get(pageRef.id)
+    if (hit) return Promise.resolve(hit)
+    const key = `${docKey}:${pageRef.id}`
+    const running = ocrJobsRef.current.get(key)
+    if (running) return running
+    const proxyDoc = openedRef.current.opened.doc
+    const pageIndex = pageRef.src.index
+    const pageId = pageRef.id
+    const override = useEdit.getState().ocrOverride
+    const job = (async (): Promise<PageText> => {
+      const page = await proxyDoc.getPage(pageIndex + 1)
+      const tc = await page.getTextContent()
+      const pieces: TextPiece[] = []
+      for (const item of tc.items) {
+        if (!('str' in item) || !item.str.trim()) continue
+        const tr = item.transform
+        pieces.push({
+          str: item.str,
+          x: tr[4],
+          y: tr[5],
+          w: item.width,
+          h: item.height || Math.hypot(tr[2], tr[3]),
+          fontName: item.fontName,
+        })
+      }
+      const families: Record<string, string | undefined> = {}
+      for (const [k, v] of Object.entries(tc.styles ?? {})) {
+        families[k] = (v as { fontFamily?: string }).fontFamily
+      }
+      let cached: PageText = { pieces: dedupeOverlappingPieces(pieces), families }
+      const wantOcr = override === 'on' || (override !== 'off' && (await pageLooksScanned(page)))
+      if (wantOcr) {
+        setOcrBusy(true)
+        setOcrProgress((p) => setOcrPct(p))
+        try {
+          const scan = await ocrPage(page)
+          // real text (e.g. already-applied retypes) keeps its precise
+          // text-layer geometry; OCR fills in the rest of the scan
+          const fresh = scan.pieces.filter((o) => !cached.pieces.some((r) => piecesOverlap(o, r)))
+          cached = { pieces: [...cached.pieces, ...fresh], families }
+        } catch {
+          /* OCR unavailable — the text layer alone */
+        } finally {
+          setOcrProgress(null)
+          setOcrBusy(false)
+          setOcrPct(0)
+        }
+      }
+      textCacheRef.current.set(pageId, cached)
+      return cached
+    })()
+    ocrJobsRef.current.set(key, job)
+    void job.catch(() => undefined).then(() => ocrJobsRef.current.delete(key))
+    return job
+  }
+
   async function retypeAt(xf: number, yf: number) {
     if (!doc || !session || !pageRef || !view || pageRef.src.type !== 'orig' || !openedRef.current) return
 
@@ -711,42 +807,12 @@ export default function EditStage() {
 
     const proxyDoc = openedRef.current.opened.doc
     const pageIndex = pageRef.src.index
-    let cached = textCacheRef.current.get(pageRef.id)
-    if (!cached) {
-      const page = await proxyDoc.getPage(pageIndex + 1)
-      const tc = await page.getTextContent()
-      const pieces: TextPiece[] = []
-      for (const item of tc.items) {
-        if (!('str' in item) || !item.str.trim()) continue
-        const tr = item.transform
-        pieces.push({
-          str: item.str,
-          x: tr[4],
-          y: tr[5],
-          w: item.width,
-          h: item.height || Math.hypot(tr[2], tr[3]),
-          fontName: item.fontName,
-        })
-      }
-      const families: Record<string, string | undefined> = {}
-      for (const [k, v] of Object.entries(tc.styles ?? {})) {
-        families[k] = (v as { fontFamily?: string }).fontFamily
-      }
-      cached = { pieces: dedupeOverlappingPieces(pieces), families }
-      if (isScannedText(cached.pieces)) {
-        // scan with no text layer — OCR gives retype its eyes
-        setOcrBusy(true)
-        try {
-          const scan = await ocrPage(page)
-          cached = { pieces: scan.pieces, families: {}, scanned: true }
-        } catch {
-          /* OCR unavailable — behave like before: nothing to retype */
-        } finally {
-          setOcrBusy(false)
-        }
-      }
-      textCacheRef.current.set(pageRef.id, cached)
-    }
+    const seq = ++retypeSeqRef.current
+    const job = loadPageText()
+    if (!job) return
+    const cached = await job
+    // rapid clicks while recognizing: only the newest one opens a box
+    if (seq !== retypeSeqRef.current) return
 
     const { wPt, hPt } = view
     const xPt = xf * wPt
@@ -822,21 +888,29 @@ export default function EditStage() {
     if (lineBelow) coverBotY = Math.max(coverBotY, lineBelow.y + lineBelow.h * 0.92 + 1)
     if (coverTopY - coverBotY < fs * 0.9) coverTopY = coverBotY + fs * 0.95
 
-    // Keep the original ink color: high-res re-render of the run, with the
-    // on-screen canvas as fallback.
+    // Keep the original ink color. Scans sample the on-screen canvas (the
+    // raster IS the source; a hi-res region re-render of a big scan image is
+    // slow on phones); text-layer runs use the hi-res render for accuracy.
     let sampled: string | null = null
-    try {
-      sampled = await sampleRunColorHiRes(await proxyDoc.getPage(pageIndex + 1), runX, best.y, runW, fs)
-    } catch {
-      sampled = null
-    }
-    if (!sampled && view.canvas) {
-      sampled = sampleInkColor(view.canvas, runX, hPt - best.y - fs * 0.85, runW, fs * 1.05, wPt, hPt)
+    if (best.ocr) {
+      if (view.canvas) {
+        sampled = sampleInkColor(view.canvas, runX, hPt - best.y - fs * 0.85, runW, fs * 1.05, wPt, hPt)
+      }
+    } else {
+      try {
+        sampled = await sampleRunColorHiRes(await proxyDoc.getPage(pageIndex + 1), runX, best.y, runW, fs)
+      } catch {
+        sampled = null
+      }
+      if (!sampled && view.canvas) {
+        sampled = sampleInkColor(view.canvas, runX, hPt - best.y - fs * 0.85, runW, fs * 1.05, wPt, hPt)
+      }
+      if (seq !== retypeSeqRef.current) return
     }
 
     // covers on scans must match the paper tone, which is rarely pure white
     const paper =
-      cached.scanned && view.canvas
+      best.ocr && view.canvas
         ? samplePaperColor(view.canvas, runX, hPt - coverTopY, runW, coverTopY - coverBotY, wPt, hPt)
         : null
 
@@ -1211,10 +1285,19 @@ export default function EditStage() {
   return (
     <section className="stage edit-stage" ref={spaceRef}>
       <EditToolbar />
-      {ocrBusy ? (
-        <div className="stage-hint hint-info">{t('edit.ocrReading')}</div>
-      ) : (
-        tool === 'retype' && <div className="stage-hint hint-info">{t('edit.retypeHint')}</div>
+      {tool === 'retype' && !ocrBusy && (
+        <div className="stage-hint hint-info">{t('edit.retypeHint')}</div>
+      )}
+      {ocrBusy && (
+        <div className="ocr-veil" role="status">
+          <div className="ocr-card">
+            <span className="ocr-spinner" aria-hidden="true" />
+            <span>
+              {t('edit.ocrReading')}
+              {ocrPct > 0 ? ` ${Math.round(ocrPct * 100)}%` : ''}
+            </span>
+          </div>
+        </div>
       )}
 
       <div className="zoom-pill">
