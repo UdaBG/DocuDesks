@@ -183,5 +183,6 @@
   "error.unexpected": "Etwas ist schiefgelaufen: {{message}}",
   "edit.ocr.auto": "Texterkennung (OCR): automatisch auf gescannten Seiten — Klick erzwingt sie",
   "edit.ocr.on": "Texterkennung (OCR): für alle Seiten an — Klick schaltet aus",
-  "edit.ocr.off": "Texterkennung (OCR): aus — Klick für automatisch"
+  "edit.ocr.off": "Texterkennung (OCR): aus — Klick für automatisch",
+  "edit.retypeHintOcr": "Beliebigen Text anklicken, um ihn zu überdecken und neu zu schreiben — gescannter Text wird gelesen"
 }

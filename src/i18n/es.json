@@ -183,5 +183,6 @@
   "error.unexpected": "Algo salió mal: {{message}}",
   "edit.ocr.auto": "Reconocimiento de texto (OCR): automático en páginas escaneadas — clic para forzarlo",
   "edit.ocr.on": "Reconocimiento de texto (OCR): activado para todas las páginas — clic para desactivar",
-  "edit.ocr.off": "Reconocimiento de texto (OCR): desactivado — clic para automático"
+  "edit.ocr.off": "Reconocimiento de texto (OCR): desactivado — clic para automático",
+  "edit.retypeHintOcr": "Haz clic en cualquier texto para cubrirlo y reescribirlo — la lectura de texto escaneado está activa"
 }

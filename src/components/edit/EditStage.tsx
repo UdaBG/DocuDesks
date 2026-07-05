@@ -451,12 +451,41 @@ export default function EditStage() {
     ocrJobsRef.current.clear()
   }, [ocrOverride])
 
-  // pre-warm recognition the moment the retype tool is armed on this page,
-  // so the first click doesn't pay the OCR wait
+  // announce OCR mode changes in the hint slot — tooltips don't exist on
+  // touch screens, so the toolbar toggle needs visible feedback
+  const [ocrNotice, setOcrNotice] = useState<string | null>(null)
+  const overrideSeenRef = useRef(false)
   useEffect(() => {
+    if (!overrideSeenRef.current) {
+      overrideSeenRef.current = true
+      return
+    }
+    const key =
+      ocrOverride === 'on' ? 'edit.ocr.on' : ocrOverride === 'off' ? 'edit.ocr.off' : 'edit.ocr.auto'
+    setOcrNotice(key)
+    const timer = setTimeout(() => setOcrNotice(null), 2600)
+    return () => clearTimeout(timer)
+  }, [ocrOverride])
+
+  // pre-warm recognition the moment the retype tool is armed on this page,
+  // so the first click doesn't pay the OCR wait; remember whether this page
+  // ended up with OCR words so the retype hint can say so
+  const [pageHasOcr, setPageHasOcr] = useState(false)
+  useEffect(() => {
+    setPageHasOcr(false)
     if (tool !== 'retype' || !view) return
+    let stale = false
     const job = loadPageText()
-    if (job) void job.catch(() => undefined)
+    if (job) {
+      job
+        .then((pt) => {
+          if (!stale) setPageHasOcr(pt.pieces.some((p) => p.ocr))
+        })
+        .catch(() => undefined)
+    }
+    return () => {
+      stale = true
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tool, view?.pageId, ocrOverride])
 
@@ -1285,8 +1314,15 @@ export default function EditStage() {
   return (
     <section className="stage edit-stage" ref={spaceRef}>
       <EditToolbar />
-      {tool === 'retype' && !ocrBusy && (
-        <div className="stage-hint hint-info">{t('edit.retypeHint')}</div>
+      {ocrNotice ? (
+        <div className="stage-hint hint-info">{t(ocrNotice)}</div>
+      ) : (
+        tool === 'retype' &&
+        !ocrBusy && (
+          <div className="stage-hint hint-info">
+            {t(pageHasOcr ? 'edit.retypeHintOcr' : 'edit.retypeHint')}
+          </div>
+        )
       )}
       {ocrBusy && (
         <div className="ocr-veil" role="status">
