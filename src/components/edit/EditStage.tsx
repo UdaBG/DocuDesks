@@ -267,6 +267,9 @@ export default function EditStage() {
   const overlayRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const panRef = useRef<{ x: number; y: number; sl: number; st: number } | null>(null)
+  /** last real scroll position — display:none (mobile tab switch) zeroes the
+   *  live one silently, so it is restored when the stage reappears */
+  const lastScrollRef = useRef({ l: 0, t: 0 })
   /** touchscreen two-finger pinch+pan (trackpads arrive as ctrl+wheel instead) */
   const touchesRef = useRef(new Map<number, { x: number; y: number }>())
   const pinchRef = useRef<{ d0: number; z0: number; c: { x: number; y: number } } | null>(null)
@@ -334,7 +337,47 @@ export default function EditStage() {
     pendingScaleRef.current = 1
     setPendingScale(1)
     setZoom(1)
+    lastScrollRef.current = { l: 0, t: 0 }
+    pendingRestoreRef.current = null
   }, [docKey])
+
+  // track the live scroll position natively; the browser can fire a stray
+  // scroll-to-0 when the container regains its box, so restores use a
+  // snapshot taken at the moment the stage reappears
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const onScroll = () => {
+      if (el.offsetParent) lastScrollRef.current = { l: el.scrollLeft, t: el.scrollTop }
+    }
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => el.removeEventListener('scroll', onScroll)
+  }, [])
+
+  // coming back from another mobile tab: the stage was display:none, which
+  // zeroed the scroll offsets while zoom survived — put the view back once
+  // the page has re-rendered (scroll writes clamp to 0 on an empty container)
+  const pendingRestoreRef = useRef<{ l: number; t: number } | null>(null)
+  const prevSpaceW = useRef(0)
+  useEffect(() => {
+    const was = prevSpaceW.current
+    prevSpaceW.current = space.w
+    if (was === 0 && space.w > 0 && (lastScrollRef.current.l || lastScrollRef.current.t)) {
+      pendingRestoreRef.current = { ...lastScrollRef.current }
+    }
+  }, [space.w])
+  useEffect(() => {
+    const target = pendingRestoreRef.current
+    if (!target || !view) return
+    pendingRestoreRef.current = null
+    requestAnimationFrame(() => {
+      const el = scrollRef.current
+      if (el) {
+        el.scrollLeft = target.l
+        el.scrollTop = target.t
+      }
+    })
+  }, [view])
 
   /**
    * Smooth zoom: scale instantly with CSS (anchored at the pointer), then
