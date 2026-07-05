@@ -79,6 +79,34 @@ pub fn run() {
         .plugin(tauri_plugin_os::init())
         .manage(PendingFiles(Mutex::new(pdf_args(std::env::args().skip(1)))))
         .setup(|app| {
+            // Android WebView scales all web text by the system font size
+            // (Vivo "large font" etc.), blowing up the px-based UI. The
+            // document has its own zoom — pin the UI text to 100%.
+            #[cfg(target_os = "android")]
+            {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.with_webview(|webview| {
+                        webview.jni_handle().exec(|env, _activity, webview| {
+                            if let Ok(settings) = env
+                                .call_method(
+                                    webview,
+                                    "getSettings",
+                                    "()Landroid/webkit/WebSettings;",
+                                    &[],
+                                )
+                                .and_then(|v| v.l())
+                            {
+                                let _ = env.call_method(
+                                    &settings,
+                                    "setTextZoom",
+                                    "(I)V",
+                                    &[jni::objects::JValue::Int(100)],
+                                );
+                            }
+                        });
+                    });
+                }
+            }
             // WebView2 consumes touchpad pinches for its own page-scale zoom
             // before the page sees them; disable that so pinches reach the
             // app as ctrl+wheel events (smooth zoom in the edit view).

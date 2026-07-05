@@ -2012,11 +2012,28 @@ input[type='range'] {
     font-size: 12px;
   }
 
-  /* edit mode on a phone: floating chrome fits the narrow stage */
+  /* edit mode on a phone: one toolbar row — vertical space is precious.
+     The bar hugs its content and scrolls sideways on very narrow screens. */
   .edit-toolbar {
+    flex-wrap: nowrap;
+    width: max-content;
     max-width: calc(100% - 12px);
-    flex-wrap: wrap;
-    justify-content: center;
+    overflow-x: auto;
+    gap: 1px;
+    padding: 3px;
+    scrollbar-width: none;
+  }
+  .edit-toolbar::-webkit-scrollbar {
+    display: none;
+  }
+  .edit-tool {
+    width: 29px;
+    height: 29px;
+    flex: 0 0 auto;
+  }
+  .edit-toolbar-sep {
+    flex: 0 0 auto;
+    margin: 3px 2px;
   }
   .pages-strip {
     max-width: calc(100% - 8px);
