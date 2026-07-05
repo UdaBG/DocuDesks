@@ -149,6 +149,27 @@ select {
   font-style: italic;
 }
 
+/* App chrome is an interface, not a web page: long-pressing a label or hint
+   on touch screens must not pop Android's text-selection menu. Real inputs
+   opt back in. */
+html {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+input,
+textarea,
+select,
+[contenteditable] {
+  user-select: text;
+  -webkit-user-select: text;
+}
+/* the saved-to path stays copyable on desktop */
+.result-dir {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
 /* ---------- app frame ---------- */
 
 .app {

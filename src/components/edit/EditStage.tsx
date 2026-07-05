@@ -1314,16 +1314,19 @@ export default function EditStage() {
   return (
     <section className="stage edit-stage" ref={spaceRef}>
       <EditToolbar />
-      {ocrNotice ? (
-        <div className="stage-hint hint-info">{t(ocrNotice)}</div>
-      ) : (
-        tool === 'retype' &&
-        !ocrBusy && (
-          <div className="stage-hint hint-info">
-            {t(pageHasOcr ? 'edit.retypeHintOcr' : 'edit.retypeHint')}
-          </div>
-        )
-      )}
+      {/* with the keyboard open the stage is a thin strip — the floating
+          hint and zoom pill would bury the document, so they step aside */}
+      {space.h >= 240 &&
+        (ocrNotice ? (
+          <div className="stage-hint hint-info">{t(ocrNotice)}</div>
+        ) : (
+          tool === 'retype' &&
+          !ocrBusy && (
+            <div className="stage-hint hint-info">
+              {t(pageHasOcr ? 'edit.retypeHintOcr' : 'edit.retypeHint')}
+            </div>
+          )
+        ))}
       {ocrBusy && (
         <div className="ocr-veil" role="status">
           <div className="ocr-card">
@@ -1336,17 +1339,19 @@ export default function EditStage() {
         </div>
       )}
 
-      <div className="zoom-pill">
-        <button title={t('edit.zoomOut')} onClick={() => zoomTo(zoomTargetRef.current / 1.2)}>
-          −
-        </button>
-        <button className="zoom-value" title={t('edit.zoomReset')} onClick={() => zoomTo(1)}>
-          {Math.round(zoom * pendingScale * 100)}%
-        </button>
-        <button title={t('edit.zoomIn')} onClick={() => zoomTo(zoomTargetRef.current * 1.2)}>
-          +
-        </button>
-      </div>
+      {space.h >= 240 && (
+        <div className="zoom-pill">
+          <button title={t('edit.zoomOut')} onClick={() => zoomTo(zoomTargetRef.current / 1.2)}>
+            −
+          </button>
+          <button className="zoom-value" title={t('edit.zoomReset')} onClick={() => zoomTo(1)}>
+            {Math.round(zoom * pendingScale * 100)}%
+          </button>
+          <button title={t('edit.zoomIn')} onClick={() => zoomTo(zoomTargetRef.current * 1.2)}>
+            +
+          </button>
+        </div>
+      )}
 
       <div
         className="edit-scroll"
