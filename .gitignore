@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+dist-electron/
+release/
+src-tauri/target/
+
+# Generated sample PDFs (npm run samples)
+samples/
+
+# Signing keys — never commit keystores
+*.jks
+*.keystore
+*.p12
+*.pfx
+
+# Local editor / tool state
+.claude/
+.idea/
+.vscode/
+*.log
+
+# Local scratch files
+image.png
+research.md
