@@ -1,5 +1,6 @@
 import { OPS, type PDFPageProxy } from 'pdfjs-dist'
 import type { Placement } from '../types'
+import { isScannedText, ocrPage, type OcrPageResult } from './ocr'
 import { openPdf } from './pdf'
 
 /**
@@ -209,6 +210,19 @@ export async function detectSignatureSpot(bytes: Uint8Array): Promise<Placement 
         pieces.push({ str: item.str, x: t[4], y: t[5], w: item.width, h: item.height || Math.hypot(t[2], t[3]) })
       }
 
+      // A scan has no text layer: OCR fills in the words, and a raster pass
+      // finds the ruled lines (which are pixels here, not vector strokes).
+      // Every rule below then works on scans unchanged.
+      let scanned: OcrPageResult | null = null
+      if (isScannedText(pieces)) {
+        try {
+          scanned = await ocrPage(page)
+          pieces.push(...scanned.pieces)
+        } catch {
+          /* OCR unavailable (e.g. no WASM SIMD) — detect what we can without it */
+        }
+      }
+
       for (const piece of pieces) {
         const text = piece.str.trim()
         const isLine = UNDERSCORE_LINE.test(text) || DOTTED_LINE.test(text)
@@ -311,7 +325,9 @@ export async function detectSignatureSpot(bytes: Uint8Array): Promise<Placement 
 
       // --- 6: drawn horizontal lines and wide flat images -------------------
       try {
-        const { lines, images } = await collectDrawings(page)
+        const drawings = await collectDrawings(page)
+        const lines = scanned ? [...drawings.lines, ...scanned.lines] : drawings.lines
+        const images = scanned ? [] : drawings.images // a scan IS one big image
         for (const line of lines) {
           if (line.w > pageW * 0.62 || line.w < pageW * 0.08) continue // dividers / ticks
           // table grids: several stacked lines with similar horizontal extent

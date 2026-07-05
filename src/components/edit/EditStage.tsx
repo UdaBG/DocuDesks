@@ -7,6 +7,7 @@ import { dashPattern, TEXT_BASELINE, TEXT_LINE_HEIGHT, textStyleFingerprint } fr
 import { uid } from '../../types'
 import type { PDFPageProxy } from 'pdfjs-dist'
 import { openPdf, renderPage, type OpenedPdf } from '../../lib/pdf'
+import { isScannedText, ocrPage } from '../../lib/ocr'
 import { inkToSvgPath, PEN_PROFILES } from '../../lib/drawing'
 import { fontById, matchFontFromPdf } from '../../editor/fonts'
 import EditToolbar from './EditToolbar'
@@ -49,6 +50,8 @@ interface PageText {
   pieces: TextPiece[]
   /** pdf.js getTextContent styles: internal font id -> generic family */
   families: Record<string, string | undefined>
+  /** pieces came from OCR — the page is a scan with no text layer */
+  scanned?: boolean
 }
 
 /**
@@ -131,6 +134,50 @@ async function sampleRunColorHiRes(
   ctx.fillRect(0, 0, w, h)
   await page.render({ canvas, canvasContext: ctx, viewport }).promise
   return inkFromPixels(ctx.getImageData(0, 0, w, h).data)
+}
+
+/**
+ * The paper tone of a region — the median of its light pixels. Scanned pages
+ * are rarely pure white, so covers on them should match the scan, not #fff.
+ */
+function samplePaperColor(
+  canvas: HTMLCanvasElement,
+  xPt: number,
+  yTopPt: number,
+  wRunPt: number,
+  hRunPt: number,
+  pageWPt: number,
+  pageHPt: number,
+): string | null {
+  const sx = canvas.width / pageWPt
+  const sy = canvas.height / pageHPt
+  // pad the region so the sample is dominated by paper, not ink
+  const x = Math.max(0, Math.floor((xPt - 6) * sx))
+  const y = Math.max(0, Math.floor((yTopPt - 4) * sy))
+  const w = Math.min(canvas.width - x, Math.ceil((wRunPt + 12) * sx))
+  const h = Math.min(canvas.height - y, Math.ceil((hRunPt + 8) * sy))
+  if (w <= 2 || h <= 2) return null
+  let data: Uint8ClampedArray
+  try {
+    data = canvas.getContext('2d')!.getImageData(x, y, w, h).data
+  } catch {
+    return null
+  }
+  const rs: number[] = []
+  const gs: number[] = []
+  const bs: number[] = []
+  for (let i = 0; i < data.length; i += 16) {
+    const lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
+    if (lum > 160 && data[i + 3] > 200) {
+      rs.push(data[i])
+      gs.push(data[i + 1])
+      bs.push(data[i + 2])
+    }
+  }
+  if (rs.length < 24) return null
+  const median = (a: number[]) => a.sort((x1, x2) => x1 - x2)[Math.floor(a.length / 2)]
+  const to = (v: number) => v.toString(16).padStart(2, '0')
+  return `#${to(median(rs))}${to(median(gs))}${to(median(bs))}`
 }
 
 /** Dominant ink color of a region of the rendered page canvas, or null. */
@@ -284,6 +331,7 @@ export default function EditStage() {
   const sheetElRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<PageView | null>(null)
   const [space, setSpace] = useState({ w: 0, h: 0 })
+  const [ocrBusy, setOcrBusy] = useState(false)
   const openedRef = useRef<{ key: string; opened: OpenedPdf } | null>(null)
   const [view, setView] = useState<PageView | null>(null)
   /** magnifier loupe while color-sampling: overlay CSS position + source device px */
@@ -673,6 +721,18 @@ export default function EditStage() {
         families[k] = (v as { fontFamily?: string }).fontFamily
       }
       cached = { pieces: dedupeOverlappingPieces(pieces), families }
+      if (isScannedText(cached.pieces)) {
+        // scan with no text layer — OCR gives retype its eyes
+        setOcrBusy(true)
+        try {
+          const scan = await ocrPage(page)
+          cached = { pieces: scan.pieces, families: {}, scanned: true }
+        } catch {
+          /* OCR unavailable — behave like before: nothing to retype */
+        } finally {
+          setOcrBusy(false)
+        }
+      }
       textCacheRef.current.set(pageRef.id, cached)
     }
 
@@ -762,6 +822,12 @@ export default function EditStage() {
       sampled = sampleInkColor(view.canvas, runX, hPt - best.y - fs * 0.85, runW, fs * 1.05, wPt, hPt)
     }
 
+    // covers on scans must match the paper tone, which is rarely pure white
+    const paper =
+      cached.scanned && view.canvas
+        ? samplePaperColor(view.canvas, runX, hPt - coverTopY, runW, coverTopY - coverBotY, wPt, hPt)
+        : null
+
     pushHistory(doc.id)
     const cover = {
       id: uid(),
@@ -771,7 +837,7 @@ export default function EditStage() {
       y: clamp(1 - coverTopY / hPt, 0, 1),
       w: clamp((runW + 4) / wPt, 0, 1),
       h: clamp((coverTopY - coverBotY) / hPt, 0, 1),
-      fill: style.whiteoutFill,
+      fill: paper ?? style.whiteoutFill,
     }
     const coverId = cover.id
     const textObj: TextObj = {
@@ -1133,7 +1199,11 @@ export default function EditStage() {
   return (
     <section className="stage edit-stage" ref={spaceRef}>
       <EditToolbar />
-      {tool === 'retype' && <div className="stage-hint hint-info">{t('edit.retypeHint')}</div>}
+      {ocrBusy ? (
+        <div className="stage-hint hint-info">{t('edit.ocrReading')}</div>
+      ) : (
+        tool === 'retype' && <div className="stage-hint hint-info">{t('edit.retypeHint')}</div>
+      )}
 
       <div className="zoom-pill">
         <button title={t('edit.zoomOut')} onClick={() => zoomTo(zoomTargetRef.current / 1.2)}>

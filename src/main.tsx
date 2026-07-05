@@ -28,6 +28,41 @@ void import('./editor/editStore').then((m) => {
   ;(window as unknown as { __editStore: typeof m.useEdit }).__editStore = m.useEdit
 })
 
+void import('./lib/ocr').then((m) => {
+  ;(window as unknown as Record<string, unknown>).__ocrSelfTest = m.ocrSelfTest
+})
+
+// Test helper: build a "scanned" PDF (text rasterized to an image, no text
+// layer) so the OCR regressions have a deterministic input.
+;(window as unknown as Record<string, unknown>).__makeScannedPdf = async (
+  linesOfText: string[],
+  ruleAfter?: number,
+) => {
+  const canvas = document.createElement('canvas')
+  canvas.width = 1190
+  canvas.height = 1684
+  const g = canvas.getContext('2d')!
+  g.fillStyle = '#f4f1e8' // scanner off-white
+  g.fillRect(0, 0, canvas.width, canvas.height)
+  g.fillStyle = '#232323'
+  g.font = '28px Arial'
+  linesOfText.forEach((line, i) => {
+    const y = 160 + i * 64
+    g.fillText(line, 120, y)
+    if (ruleAfter === i) {
+      g.fillRect(120, y + 34, 380, 3) // a ruled signing line under this row
+    }
+  })
+  const { PDFDocument } = await import('pdf-lib')
+  const doc = await PDFDocument.create()
+  const png = await doc.embedPng(
+    Uint8Array.from(atob(canvas.toDataURL('image/png').split(',')[1]), (c) => c.charCodeAt(0)),
+  )
+  const page = doc.addPage([595, 842])
+  page.drawImage(png, { x: 0, y: 0, width: 595, height: 842 })
+  return doc.save()
+}
+
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />

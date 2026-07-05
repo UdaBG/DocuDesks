@@ -178,5 +178,6 @@
   "edit.dash.dotted": "Dotted",
   "docs.protected": "Protected",
   "stage.encrypted": "Password-protected PDF — the saved copy will not keep its protection",
-  "edit.shapingWarn": "This script may not render correctly in the saved PDF — glyph shaping is not supported yet."
+  "edit.shapingWarn": "This script may not render correctly in the saved PDF — glyph shaping is not supported yet.",
+  "edit.ocrReading": "Reading scanned text…"
 }

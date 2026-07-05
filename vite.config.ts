@@ -10,7 +10,9 @@ function prodCsp(): Plugin {
     transformIndexHtml(html) {
       const csp = [
         "default-src 'self'",
-        "script-src 'self'",
+        // wasm-unsafe-eval: WebAssembly compilation only (tesseract.js OCR
+        // core) — does NOT allow JS eval
+        "script-src 'self' 'wasm-unsafe-eval'",
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: blob:",
         "font-src 'self' data:",

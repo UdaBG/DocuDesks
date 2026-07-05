@@ -8,7 +8,7 @@
 
 - **Bulk signing** — add any number of PDFs (file dialog, drag & drop anywhere, or command line). The preview shows the top of the stack with the count of documents beneath; one click signs them all.
 - **Manual mode** — drag the signature anywhere on the preview, resize with the corner handle, choose first/last/specific page. The same page-relative placement is applied to every document, so mixed page sizes still line up.
-- **Smart detect mode** — scans each document for AcroForm signature fields, signature-related labels in 10+ languages (`Signature`, `Unterschrift`, `Firma`, `Assinatura`, `Underskrift`, `අත්සන`, …) and ruled/underscore signing lines, then proposes a per-document placement. Any single document's proposal can be corrected by dragging without affecting the rest.
+- **Smart detect mode** — scans each document for AcroForm signature fields, signature-related labels in 10+ languages (`Signature`, `Unterschrift`, `Firma`, `Assinatura`, `Underskrift`, `අත්සන`, …) and ruled/underscore signing lines, then proposes a per-document placement. Any single document's proposal can be corrected by dragging without affecting the rest. **Scanned documents work too**: pages without a text layer are read with bundled OCR (tesseract.js, offline) and ruled lines are found in the bitmap itself.
 - **Three ways to create a signature**
   - **Draw** — pressure-sensitive smooth strokes (mouse, trackpad, pen) via perfect-freehand.
   - **Photo** — photograph your signature on paper; an illumination-map extraction (adaptive to shadows and uneven lighting) lifts only the ink onto a transparent background, with sliders for ink pickup and speckle clean-up, keeping the original ink colour or re-inking it.
@@ -70,6 +70,8 @@ page editor on the selected document:
   replaced with an editable text box prefilled with the original string, in a
   matched font (exact installed family from the PDF font name when possible,
   bold/italic detected) and the original ink color (sampled from the page).
+  On scanned pages the clicked text is recognized with the bundled OCR and
+  the cover is toned to match the scan's paper, not pure white.
   Re-clicking a retyped area edits the existing box; overlapping hidden runs
   in previously saved edits are deduplicated automatically.
 
@@ -164,8 +166,10 @@ with Xcode. All mobile icons are already generated in `src-tauri/icons/`.
 
 **Planned**
 
-- **OCR for scanned documents** — scans have no text layer, so smart detect
-  and retype cannot see them today (zooming shows the scan's own resolution).
+- **More OCR languages** — the bundled model is English ("fast" variant);
+  other Latin-script languages mostly work, but dedicated models (and
+  Sinhala/Arabic scripts) need their own traineddata, ideally as an optional
+  download.
 - **Cryptographic signatures (PAdES)** — current signing is visual (an ink
   image, like the "simple electronic signature" in most e-sign tools).
   Certificate-based digital signatures with timestamping are the next layer.
