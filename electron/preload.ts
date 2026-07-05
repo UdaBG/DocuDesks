@@ -3,10 +3,15 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron'
 export interface SignerApi {
   /** false on mobile platforms where a file cannot be revealed in a file manager */
   canRevealFiles: boolean
+  /** false on mobile platforms with no OS print verb */
+  canPrint: boolean
   openPdfDialog(): Promise<string[]>
+  /** on mobile resolves to a sentinel: files are then placed per-file via the
+   *  system save dialog rather than into a directory */
   chooseOutputDir(defaultPath?: string): Promise<string | null>
   readFile(path: string): Promise<Uint8Array>
   exists(path: string): Promise<boolean>
+  /** returns the written path, or '' if the user cancelled a per-file save dialog */
   writeSigned(dir: string, name: string, data: Uint8Array): Promise<string>
   showItemInFolder(path: string): void
   /** send PDFs to the OS print pipeline (default PDF handler) */
@@ -25,6 +30,7 @@ export interface SignerApi {
 
 const api: SignerApi = {
   canRevealFiles: true,
+  canPrint: true,
   openPdfDialog: () => ipcRenderer.invoke('dialog:open-pdfs'),
   chooseOutputDir: (defaultPath) => ipcRenderer.invoke('dialog:choose-dir', defaultPath),
   readFile: (path) => ipcRenderer.invoke('fs:read-file', path),

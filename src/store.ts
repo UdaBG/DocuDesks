@@ -558,10 +558,15 @@ export const useApp = create<AppState>((set, get) => ({
         try {
           const out = await applyStamps(doc.bytes, stamps)
           const written = await window.signer.writeSigned(dir, signedName(doc.name), out)
-          if (!firstPath) firstPath = written
-          paths.push(written)
-          signed++
-          patchDoc(set, doc.id, { status: 'signed', signedPath: written })
+          if (!written) {
+            // user dismissed the per-file save dialog (mobile) — not an error
+            skipped++
+          } else {
+            if (!firstPath) firstPath = written
+            paths.push(written)
+            signed++
+            patchDoc(set, doc.id, { status: 'signed', signedPath: written })
+          }
         } catch (e) {
           skipped++
           patchDoc(set, doc.id, { status: 'error', error: String(e) })

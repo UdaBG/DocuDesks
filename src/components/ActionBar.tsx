@@ -96,14 +96,16 @@ function EditActionBar() {
               <FolderIcon size={13} />
               {t('edit.saved')}
             </button>
-            <button
-              className="ghost-btn"
-              onClick={() => void window.signer.printFiles([savedPath])}
-              title={savedPath}
-            >
-              <PrinterIcon size={13} />
-              {t('result.print', { count: 1 })}
-            </button>
+            {window.signer.canPrint && (
+              <button
+                className="ghost-btn"
+                onClick={() => void window.signer.printFiles([savedPath])}
+                title={savedPath}
+              >
+                <PrinterIcon size={13} />
+                {t('result.print', { count: 1 })}
+              </button>
+            )}
           </>
         )}
       </div>
@@ -124,15 +126,17 @@ function EditActionBar() {
           <RedoIcon size={14} />
           {t('edit.redo')}
         </button>
-        <button
-          className="ghost-btn"
-          disabled={!doc || !session || busy}
-          title={t('action.printHint')}
-          onClick={() => void printCurrent()}
-        >
-          <PrinterIcon size={14} />
-          {t('result.print', { count: 1 })}
-        </button>
+        {window.signer.canPrint && (
+          <button
+            className="ghost-btn"
+            disabled={!doc || !session || busy}
+            title={t('action.printHint')}
+            onClick={() => void printCurrent()}
+          >
+            <PrinterIcon size={14} />
+            {t('result.print', { count: 1 })}
+          </button>
+        )}
         <button className="ghost-btn" disabled={!hasEdits || busy} onClick={() => void applyToStack()}>
           {t('edit.apply')}
         </button>
@@ -207,15 +211,17 @@ export default function ActionBar() {
           ) : (
             blockReason && <span className="muted">{blockReason}</span>
           )}
-          <button
-            className="ghost-btn"
-            disabled={!signable || detecting}
-            title={t('action.printHint')}
-            onClick={() => void printAll()}
-          >
-            <PrinterIcon size={14} />
-            {t('result.print', { count: Math.max(signable, 1) })}
-          </button>
+          {window.signer.canPrint && (
+            <button
+              className="ghost-btn"
+              disabled={!signable || detecting}
+              title={t('action.printHint')}
+              onClick={() => void printAll()}
+            >
+              <PrinterIcon size={14} />
+              {t('result.print', { count: Math.max(signable, 1) })}
+            </button>
+          )}
           <button
             className="btn-primary btn-sign"
             disabled={!signable || !hasSig || detecting}

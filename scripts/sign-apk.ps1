@@ -16,7 +16,8 @@ if (-not (Test-Path $ks)) {
   Write-Output "keystore created: $ks"
 }
 
-$out = Join-Path $apkDir 'DocuDesk_Lite_0.1.0_arm64-signed.apk'
+$ver = (Get-Content 'C:\Signer\src-tauri\tauri.conf.json' -Raw | ConvertFrom-Json).version
+$out = Join-Path $apkDir "DocuDesk_Lite_${ver}_arm64-signed.apk"
 Copy-Item $unsigned.FullName $out -Force
 & "$sdk\build-tools\34.0.0\apksigner.bat" sign --ks $ks --ks-pass "pass:$pass" --key-pass "pass:$pass" $out
 & "$sdk\build-tools\34.0.0\apksigner.bat" verify $out

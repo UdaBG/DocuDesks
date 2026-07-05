@@ -1746,14 +1746,20 @@ input[type='range'] {
 }
 
 @media (max-width: 760px) {
+  html,
+  body {
+    overflow-x: hidden;
+  }
   .app {
-    grid-template-rows: 50px minmax(0, 1fr) auto auto;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
   }
 
-  /* top bar: tighter, hint dropped; edit mode is desktop-first for now */
+  /* top bar wraps to two rows — brand + language, then the mode toggle
+     across the full width; edit mode is desktop-first for now */
   .topbar {
-    gap: 10px;
-    padding: 0 10px;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    padding: 7px 10px;
   }
   .view-toggle {
     display: none;
@@ -1761,11 +1767,23 @@ input[type='range'] {
   .brand {
     min-width: 0;
   }
+  .wordmark {
+    font-size: 23px;
+  }
   .mode-hint {
     display: none;
   }
+  .mode-wrap {
+    order: 5;
+    flex-basis: 100%;
+  }
+  .mode-toggle {
+    flex: 1;
+  }
   .seg {
-    padding: 5px 10px;
+    flex: 1;
+    justify-content: center;
+    padding: 6px 10px;
     font-size: 12px;
   }
   .lang select {
@@ -1797,6 +1815,7 @@ input[type='range'] {
   }
 
   .actionbar {
+    flex-wrap: wrap;
     padding: 8px 12px;
     gap: 10px;
     height: auto;
