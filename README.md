@@ -142,7 +142,36 @@ with Xcode. All mobile icons are already generated in `src-tauri/icons/`.
 
 ## Roadmap
 
-- **Mobile polish** — share-sheet export of signed PDFs, "open with Signer" intent for PDFs, release-store signing config.
-- **Cryptographic signatures (PAdES)** — current signing is visual (an ink image, like the "simple electronic signature" in most e-sign tools). Certificate-based digital signatures with timestamping are a natural next layer.
-- **More editing tools** — text boxes, date stamps, initials-on-every-page, page reorder/merge.
-- **Deep-link protocol** (`signer://sign?...`) and a headless CLI mode for server-side batch signing.
+**Next up**
+
+- **Annotation editing** — text added on top of a page by other apps (FreeText
+  notes, stamps, filled form fields) lives in the annotation layer, not the
+  page content. Since 0.1.4 it is flattened on save so covers work and looks
+  identical, but editing it directly needs a save/reopen round-trip. Plan:
+  tapping an annotation in edit mode converts it on the spot — remove the
+  annotation and open the existing retype box prefilled with its text.
+- **Flatten annotations when signing** — the sign pipeline should flatten the
+  way the editor does, so a placed signature can never be painted over by an
+  annotation sitting above the page content.
+- **Bundled fallback fonts on Android** — retype matches installed fonts via
+  `queryLocalFonts`, which only exists on desktop; mobile retype falls back to
+  the standard PDF fonts. Ship a small set of metric-compatible faces.
+- **Encrypted PDFs** — password-protected files are currently loaded
+  best-effort (`ignoreEncryption`); detect them and warn instead.
+- **Complex-script text** (සිංහල, Arabic, Indic) — pdf-lib does not shape
+  glyphs, so typed/retyped text in these scripts renders unshaped; needs a
+  shaping engine (HarfBuzz-wasm) or an honest warning in the UI.
+
+**Planned**
+
+- **OCR for scanned documents** — scans have no text layer, so smart detect
+  and retype cannot see them today (zooming shows the scan's own resolution).
+- **Cryptographic signatures (PAdES)** — current signing is visual (an ink
+  image, like the "simple electronic signature" in most e-sign tools).
+  Certificate-based digital signatures with timestamping are the next layer.
+- **Mobile polish** — Android print, share sheet after saving, "open with
+  DocuDesk" intent for PDFs, camera capture in the photo signature tab.
+- **Distribution** — signed installers (SmartScreen), auto-update, CI that
+  runs the CDP regression suite on every push, iOS build (needs macOS).
+- **Deep-link protocol** (`docudesk://sign?...`) and a headless CLI mode for
+  server-side batch signing.
