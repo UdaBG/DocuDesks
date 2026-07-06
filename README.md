@@ -169,6 +169,10 @@ with Xcode. All mobile icons are already generated in `src-tauri/icons/`.
 
 **Planned**
 
+- **Google Play release** — full playbook in
+  [docs/PLAY_STORE.md](docs/PLAY_STORE.md): developer account, upload
+  keystore + AAB signing, privacy policy, store listing in 6 languages,
+  internal → closed (20 testers / 14 days) → production flow.
 - **More OCR languages** — the bundled model is English ("fast" variant);
   other Latin-script languages mostly work, but dedicated models (and
   Sinhala/Arabic scripts) need their own traineddata, ideally as an optional
