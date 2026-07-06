@@ -184,5 +184,6 @@
   "edit.ocr.auto": "Textigenkänning (OCR): automatisk på skannade sidor — klicka för att tvinga på",
   "edit.ocr.on": "Textigenkänning (OCR): på för alla sidor — klicka för att stänga av",
   "edit.ocr.off": "Textigenkänning (OCR): av — klicka för automatisk",
-  "edit.retypeHintOcr": "Klicka på valfri text för att täcka och skriva om den — läsning av skannad text är på"
+  "edit.retypeHintOcr": "Klicka på valfri text för att täcka och skriva om den — läsning av skannad text är på",
+  "error.openFailed": "Kunde inte öppna ”{{name}}” — försök välja den igen"
 }

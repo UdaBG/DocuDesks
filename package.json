@@ -1,7 +1,7 @@
 {
   "name": "docudesk",
   "productName": "DocuDesk",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "description": "Bulk-sign and edit PDF documents. Sign one, sign them all.",
   "author": "DocuDesk",
   "license": "MIT",

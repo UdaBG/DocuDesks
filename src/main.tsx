@@ -32,6 +32,34 @@ void import('./lib/ocr').then((m) => {
   ;(window as unknown as Record<string, unknown>).__ocrSelfTest = m.ocrSelfTest
 })
 
+// Safety net for Android file picks (delivered from MainActivity, which sees
+// every activity result even when Tauri's plugin callback was lost to an
+// activity recreation behind the picker). Files already added — the normal
+// delivery path won the race — are de-duplicated by the store; non-PDF or
+// empty targets (a save dialog's freshly created file) are ignored.
+;(window as unknown as Record<string, unknown>).__androidPickedFiles = (uris: string[]) => {
+  void (async () => {
+    for (const uri of uris) {
+      try {
+        const bytes = new Uint8Array(await window.signer.readFile(uri))
+        const isPdf =
+          bytes.length > 4 &&
+          bytes[0] === 0x25 && // %
+          bytes[1] === 0x50 && // P
+          bytes[2] === 0x44 && // D
+          bytes[3] === 0x46 // F
+        if (!isPdf) continue
+        const decoded = decodeURIComponent(uri)
+        const name = decoded.split(/[\\/:]/).pop()?.trim() || 'document.pdf'
+        await useApp.getState().addFiles([{ name, bytes, path: uri }])
+      } catch {
+        /* unreadable or foreign result — not a pick we can use */
+      }
+    }
+  })()
+  return true
+}
+
 // Test helper: build a "scanned" PDF (text rasterized to an image, no text
 // layer) so the OCR regressions have a deterministic input.
 ;(window as unknown as Record<string, unknown>).__makeScannedPdf = async (

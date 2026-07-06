@@ -184,5 +184,6 @@
   "edit.ocr.auto": "Reconnaissance de texte (OCR) : automatique sur les pages numérisées — cliquer pour forcer",
   "edit.ocr.on": "Reconnaissance de texte (OCR) : activée pour toutes les pages — cliquer pour désactiver",
   "edit.ocr.off": "Reconnaissance de texte (OCR) : désactivée — cliquer pour automatique",
-  "edit.retypeHintOcr": "Cliquez sur un texte pour le couvrir et le retaper — la lecture du texte numérisé est active"
+  "edit.retypeHintOcr": "Cliquez sur un texte pour le couvrir et le retaper — la lecture du texte numérisé est active",
+  "error.openFailed": "Impossible d’ouvrir « {{name}} » — réessayez de le sélectionner"
 }

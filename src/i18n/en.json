@@ -184,5 +184,6 @@
   "edit.ocr.auto": "Text recognition (OCR): automatic on scanned pages — click to force on",
   "edit.ocr.on": "Text recognition (OCR): on for all pages — click to turn off",
   "edit.ocr.off": "Text recognition (OCR): off — click for automatic",
-  "edit.retypeHintOcr": "Click any text in the document to cover it and retype — reading scanned text is on"
+  "edit.retypeHintOcr": "Click any text in the document to cover it and retype — reading scanned text is on",
+  "error.openFailed": "Could not open \"{{name}}\" — try picking it again"
 }

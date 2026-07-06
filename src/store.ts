@@ -100,6 +100,9 @@ interface AppState {
   printAll(): Promise<void>
 }
 
+/** last time the file dialog was opened — double-tap debounce */
+let lastDialogAt = 0
+
 const DEFAULT_PLACEMENT: Placement = {
   anchor: 'last',
   pageIndex: 0,
@@ -250,13 +253,23 @@ export const useApp = create<AppState>((set, get) => ({
         const bytes = await window.signer.readFile(p)
         files.push({ name: p.replace(/^.*[\\/]/, ''), bytes: new Uint8Array(bytes), path: p })
       } catch {
-        // unreadable path — skip silently, the OS dialog already validated most cases
+        // tell the user instead of failing silently — the error toast listens
+        // for window error events
+        window.dispatchEvent(
+          new ErrorEvent('error', {
+            message: i18next.t('error.openFailed', { name: p.replace(/^.*[\\/]/, '') }),
+          }),
+        )
       }
     }
     if (files.length) await get().addFiles(files)
   },
 
   async openFileDialog() {
+    // a double-tap on a laggy phone opens two pickers whose results then
+    // cross-wire in the native single-callback slot — debounce it
+    if (Date.now() - lastDialogAt < 1500) return
+    lastDialogAt = Date.now()
     const paths = await window.signer.openPdfDialog()
     if (paths.length) await get().addFromPaths(paths)
   },
