@@ -2,6 +2,8 @@
 
 **Sign one, sign them all.** DocuDesk (formerly Signer) is an installable desktop app for bulk-signing PDF documents: load a stack of PDFs (for example the same form filled in by many people), place your signature once on the top document, and every document in the stack is signed in the same spot — or let **Smart detect** find the signature line in each document automatically.
 
+**Free and fully offline.** No ads, no in-app purchases, no accounts, no analytics — and nothing your documents contain ever leaves your device. See the [Privacy Policy](docs/PRIVACY.md). The road to a public Play Store release is tracked in the [Release Plan](docs/RELEASE_PLAN.md).
+
 ![stack](docs/screenshot-placeholder.png)
 
 ## Features

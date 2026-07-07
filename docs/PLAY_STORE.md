@@ -1,5 +1,9 @@
 # Publishing DocuDesk Lite to Google Play
 
+> **Superseded by [RELEASE_PLAN.md](RELEASE_PLAN.md)**, which expands this into
+> the full, current plan (Play steps with exact commands, plus the code and
+> auto-update follow-ups). This file is kept as a quick reference.
+
 The complete path from this repository to a public Play Store listing.
 Steps marked **[you]** need the account owner; steps marked **[repo]** are
 technical work done in this codebase.
