@@ -50,6 +50,11 @@ async function saveJson(name: string, value: unknown): Promise<void> {
 /** The same platform surface the Electron preload exposes, on Tauri plugins. */
 export function createTauriApi(): SignerApi {
   const mobile = isMobilePlatform()
+  // How many times each base name has been saved this session. The mobile save
+  // dialog owns the final name, but we suggest a de-duplicated default so
+  // signing+saving the same document twice doesn't pre-fill a colliding name
+  // (a second same-name create yields a broken 0-byte file on some providers).
+  const saveNameCounts = new Map<string, number>()
   return {
     canRevealFiles: !mobile,
     canPrint: !mobile,
@@ -90,13 +95,19 @@ export function createTauriApi(): SignerApi {
         // re-import our own output as a new document. Mark a suppression window
         // (and remember the URI) so the net skips it. See main.tsx.
         const w = window as unknown as SaveGuard
+        // suggest "name.pdf", then "name (2).pdf", … on repeat saves this
+        // session — matching the desktop de-dupe so the user isn't handed a
+        // colliding default they'd tap straight through
+        const used = saveNameCounts.get(name) ?? 0
+        const suggested = used === 0 ? name : `${name.replace(/\.pdf$/i, '')} (${used + 1}).pdf`
         w.__signerSavingUntil = Date.now() + 8000
         try {
           const target = await save({
-            defaultPath: name,
+            defaultPath: suggested,
             filters: [{ name: 'PDF documents', extensions: ['pdf'] }],
           })
           if (!target) return ''
+          saveNameCounts.set(name, used + 1)
           ;(w.__signerSavedUris ??= new Set<string>()).add(target)
           await writeFile(target, data)
           w.__signerSavingUntil = Date.now() + 8000 // keep it suppressed past the write, too
