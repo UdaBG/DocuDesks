@@ -192,5 +192,8 @@
   "unlock.action": "Lås upp",
   "unlock.cancel": "Redigera utan att låsa upp",
   "unlock.working": "Låser upp…",
-  "error.unlockFailed": "Kunde inte låsa upp ”{{name}}” — den kan kräva ett öppningslösenord"
+  "error.unlockFailed": "Kunde inte låsa upp ”{{name}}” — den kan kräva ett öppningslösenord",
+  "stage.prevPage": "Föregående sida",
+  "stage.nextPage": "Nästa sida",
+  "edit.toolbar": "Redigeringsverktyg"
 }

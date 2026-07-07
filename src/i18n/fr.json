@@ -192,5 +192,8 @@
   "unlock.action": "Déverrouiller",
   "unlock.cancel": "Modifier sans déverrouiller",
   "unlock.working": "Déverrouillage…",
-  "error.unlockFailed": "Impossible de déverrouiller « {{name}} » — un mot de passe d’ouverture est peut-être requis"
+  "error.unlockFailed": "Impossible de déverrouiller « {{name}} » — un mot de passe d’ouverture est peut-être requis",
+  "stage.prevPage": "Page précédente",
+  "stage.nextPage": "Page suivante",
+  "edit.toolbar": "Outils d’édition"
 }

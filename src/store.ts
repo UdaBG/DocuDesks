@@ -269,8 +269,13 @@ export const useApp = create<AppState>((set, get) => ({
   },
 
   async addFiles(files) {
-    const existing = new Set(get().docs.map((d) => d.path ?? d.name))
-    const fresh = files.filter((f) => !existing.has(f.path ?? f.name))
+    // dedupe by path when known, else name + size — so two different files
+    // that happen to share a name (the mobile / drag case, where there is no
+    // path) are both kept, while a true re-add of the same file is dropped
+    const keyOf = (d: { path?: string; name: string; bytes: Uint8Array }) =>
+      d.path ?? `${d.name}:${d.bytes.length}`
+    const existing = new Set(get().docs.map(keyOf))
+    const fresh = files.filter((f) => !existing.has(keyOf(f)))
     const added: SigDoc[] = []
     for (const f of fresh) {
       try {

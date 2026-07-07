@@ -192,5 +192,8 @@
   "unlock.action": "Desbloquear",
   "unlock.cancel": "Editar sin desbloquear",
   "unlock.working": "Desbloqueando…",
-  "error.unlockFailed": "No se pudo desbloquear «{{name}}» — puede requerir una contraseña de apertura"
+  "error.unlockFailed": "No se pudo desbloquear «{{name}}» — puede requerir una contraseña de apertura",
+  "stage.prevPage": "Página anterior",
+  "stage.nextPage": "Página siguiente",
+  "edit.toolbar": "Herramientas de edición"
 }

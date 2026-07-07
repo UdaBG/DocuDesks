@@ -38,7 +38,7 @@ export default function EditToolbar() {
     ocrOverride === 'on' ? 'edit.ocr.on' : ocrOverride === 'off' ? 'edit.ocr.off' : 'edit.ocr.auto',
   )
   return (
-    <div className="edit-toolbar" role="toolbar" aria-label="Editing tools">
+    <div className="edit-toolbar" role="toolbar" aria-label={t('edit.toolbar')}>
       {TOOLS.map(({ id, icon: Icon, key, sc }) => (
         <button
           key={id}

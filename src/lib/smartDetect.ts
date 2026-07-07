@@ -180,6 +180,7 @@ export async function detectSignatureSpot(bytes: Uint8Array): Promise<Placement 
       const pageW = view.width
       const pageH = view.height
       const pageBonus = p * 3 // prefer later pages
+      const pageStart = candidates.length // this page's candidates begin here
 
       // --- 1 & 2: form fields ---------------------------------------------
       const annotations = await page.getAnnotations()
@@ -392,10 +393,10 @@ export async function detectSignatureSpot(bytes: Uint8Array): Promise<Placement 
         /* operator list unavailable — text evidence only */
       }
 
-      // Convert this page's candidates to fractions now while we have dims.
-      for (const c of candidates) {
-        if (c.pageIndex !== p || (c as unknown as { converted?: boolean }).converted) continue
-        ;(c as unknown as { converted: boolean }).converted = true
+      // Convert just this page's candidates to fractions while we have its
+      // dims (they were all pushed at index >= pageStart).
+      for (let i = pageStart; i < candidates.length; i++) {
+        const c = candidates[i]
         c.x = clamp01(c.x / pageW)
         c.yBottom = clamp01(1 - c.yBottom / pageH) // fraction from top to the signing line
         c.w = Math.min(Math.max(c.w / pageW, 0.1), 0.5)

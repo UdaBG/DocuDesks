@@ -1,4 +1,4 @@
-import { LineCapStyle, PDFDocument, degrees, rgb, type PDFFont, type PDFPage, type RGB } from 'pdf-lib'
+import { LineCapStyle, PDFDocument, StandardFonts, degrees, rgb, type PDFFont, type PDFPage, type RGB } from 'pdf-lib'
 import fontkit from '@pdf-lib/fontkit'
 import { inkToSvgPath } from '../lib/drawing'
 import { dataUrlToBytes } from '../lib/imageUtils'
@@ -43,7 +43,7 @@ async function embedFonts(out: PDFDocument, session: EditSession): Promise<Map<s
           : await out.embedFont(resolved.std!),
       )
     } catch {
-      fonts.set(key, await out.embedFont('Helvetica' as never))
+      fonts.set(key, await out.embedFont(StandardFonts.Helvetica))
     }
   }
   return fonts

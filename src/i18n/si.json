@@ -192,5 +192,8 @@
   "unlock.action": "අගුළු අරින්න",
   "unlock.cancel": "අගුළු නොහැර සංස්කරණය",
   "unlock.working": "අගුළු අරිමින්…",
-  "error.unlockFailed": "\"{{name}}\" අගුළු ඇරිය නොහැකි විය — විවෘත මුරපදයක් අවශ්‍ය විය හැක"
+  "error.unlockFailed": "\"{{name}}\" අගුළු ඇරිය නොහැකි විය — විවෘත මුරපදයක් අවශ්‍ය විය හැක",
+  "stage.prevPage": "පෙර පිටුව",
+  "stage.nextPage": "ඊළඟ පිටුව",
+  "edit.toolbar": "සංස්කරණ මෙවලම්"
 }

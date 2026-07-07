@@ -575,23 +575,32 @@ export default function EditStage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tool, view?.pageId, ocrOverride])
 
-  // automation/debug hook (CDP regressions inspect scroll bookkeeping)
+  // automation/debug hooks (CDP regressions inspect scroll + gesture state).
+  // Installed once and torn down on unmount; they read live values from refs.
   useEffect(() => {
-    ;(window as unknown as Record<string, unknown>).__editScrollDebug = () => ({
+    const w = window as unknown as Record<string, unknown>
+    w.__editScrollDebug = () => ({
       last: { ...lastScrollRef.current },
       pending: pendingRestoreRef.current ? { ...pendingRestoreRef.current } : null,
       prevW: prevSpaceW.current,
-      hasView: !!view,
-      space: { ...space },
     })
-    // gesture bookkeeping (CDP regressions assert the stuck-pinch self-heal)
-    ;(window as unknown as Record<string, unknown>).__editGestureDebug = () => ({
+    w.__editGestureDebug = () => ({
       touches: touchesRef.current.size,
       pinch: !!pinchRef.current,
       pan: !!panRef.current,
       tap: !!tapRef.current,
     })
-  })
+    return () => {
+      delete w.__editScrollDebug
+      delete w.__editGestureDebug
+    }
+  }, [])
+
+  // the zoom-settle timeout calls setZoom ~180ms later — cancel it on unmount
+  // so it can't fire a state update after the stage is gone
+  useEffect(() => () => {
+    if (settleTimerRef.current) clearTimeout(settleTimerRef.current)
+  }, [])
 
   /**
    * Smooth zoom: scale instantly with CSS (anchored at the pointer), then
@@ -928,6 +937,7 @@ export default function EditStage() {
     }
 
     const proxyDoc = openedRef.current.opened.doc
+    const startKey = openedRef.current.key
     const pageIndex = pageRef.src.index
     const seq = ++retypeSeqRef.current
     const job = loadPageText()
@@ -935,6 +945,9 @@ export default function EditStage() {
     const cached = await job
     // rapid clicks while recognizing: only the newest one opens a box
     if (seq !== retypeSeqRef.current) return
+    // switching documents during recognition must not drop a box onto the
+    // doc we navigated away from (retypeSeqRef isn't bumped by a doc switch)
+    if (openedRef.current?.key !== startKey) return
 
     const { wPt, hPt } = view
     const xPt = xf * wPt

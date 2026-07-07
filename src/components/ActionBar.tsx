@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useApp } from '../store'
+import { useApp, sessionHasEdits } from '../store'
 import { useEdit } from '../editor/editStore'
 import { buildEditedPdf } from '../editor/exportPdf'
 import { getPageCount } from '../lib/pdf'
@@ -33,12 +33,7 @@ function EditActionBar() {
   const editingId = session?.editingId ?? null
   if (narrow && editingId) return null
 
-  const hasEdits =
-    !!session &&
-    (session.objects.length > 0 ||
-      session.watermark !== null ||
-      session.pages.some((p) => p.src.type === 'blank') ||
-      session.pages.length !== (doc?.pageCount ?? 0))
+  const hasEdits = !!doc && sessionHasEdits(session, doc)
 
   async function build(): Promise<Uint8Array | null> {
     if (!doc || !session) return null

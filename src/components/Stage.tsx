@@ -111,7 +111,11 @@ export default function Stage() {
     return () => {
       cancelled = true
     }
-  }, [doc?.id, doc?.rev, editSession, doc])
+    // doc.id + doc.rev capture identity and any byte/page change; the whole
+    // doc object is intentionally omitted so an unrelated field (e.g. status
+    // flipping during signing) doesn't rebuild the edited preview
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doc?.id, doc?.rev, editSession])
 
   const previewKey = preview?.key
   useEffect(() => {
@@ -539,7 +543,7 @@ export default function Stage() {
       {doc && docOk && doc.pageCount > 1 && (
         <div className="page-nav">
           <button
-            aria-label="Previous page"
+            aria-label={t('stage.prevPage')}
             disabled={page === 0}
             onClick={() => setPreviewPage(page - 1)}
           >
@@ -547,7 +551,7 @@ export default function Stage() {
           </button>
           <span>{t('stage.page', { page: page + 1, pages: doc.pageCount })}</span>
           <button
-            aria-label="Next page"
+            aria-label={t('stage.nextPage')}
             disabled={page >= doc.pageCount - 1}
             onClick={() => setPreviewPage(page + 1)}
           >
