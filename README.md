@@ -75,6 +75,11 @@ page editor on the selected document:
   Re-clicking a retyped area edits the existing box; overlapping hidden runs
   in previously saved edits are deduplicated automatically.
 
+- **Unlock protected PDFs** — files with owner-password protection (view-OK
+  but edit-blocked) are flagged; entering Edit offers a one-tap Unlock that
+  strips the protection with bundled qpdf-wasm (offline), so the file becomes
+  fully editable and signable. The original on disk is never modified.
+
   ⚠️ Like all cover-based editors, the original text remains in the file
   underneath the cover — it is still selectable and searchable. Retype is for
   corrections, **not redaction**. Do not use it to remove sensitive data.
@@ -161,10 +166,6 @@ with Xcode. All mobile icons are already generated in `src-tauri/icons/`.
 - **Bundled fallback fonts on Android** — retype matches installed fonts via
   `queryLocalFonts`, which only exists on desktop; mobile retype falls back to
   the standard PDF fonts. Ship a small set of metric-compatible faces.
-- **Unlock protected PDFs** — files with owner-password protection are
-  flagged and often cannot be rebuilt at all (their objects stay encrypted;
-  pdf-lib throws mid-save — surfaced as a clear error since 0.1.13). A
-  bundled qpdf-wasm "remove protection" step would make them fully editable.
 - **Complex-script text** (සිංහල, Arabic, Indic) — pdf-lib does not shape
   glyphs, so typed/retyped text in these scripts renders unshaped; needs a
   shaping engine (HarfBuzz-wasm) or an honest warning in the UI.

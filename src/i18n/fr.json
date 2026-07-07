@@ -186,5 +186,11 @@
   "edit.ocr.off": "Reconnaissance de texte (OCR) : désactivée — cliquer pour automatique",
   "edit.retypeHintOcr": "Cliquez sur un texte pour le couvrir et le retaper — la lecture du texte numérisé est active",
   "error.openFailed": "Impossible d’ouvrir « {{name}} » — réessayez de le sélectionner",
-  "error.protectedEdit": "Ce PDF est protégé par mot de passe et ne peut pas être reconstruit — retirez d’abord le mot de passe, puis réessayez"
+  "error.protectedEdit": "Ce PDF est protégé par mot de passe et ne peut pas être reconstruit — retirez d’abord le mot de passe, puis réessayez",
+  "unlock.title": "Ce PDF est protégé",
+  "unlock.body": "Une protection par mot de passe empêche la modification. Déverrouiller une copie pour la modifier et la signer ? Votre fichier d’origine reste inchangé.",
+  "unlock.action": "Déverrouiller",
+  "unlock.cancel": "Modifier sans déverrouiller",
+  "unlock.working": "Déverrouillage…",
+  "error.unlockFailed": "Impossible de déverrouiller « {{name}} » — un mot de passe d’ouverture est peut-être requis"
 }

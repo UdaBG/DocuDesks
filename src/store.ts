@@ -63,6 +63,8 @@ interface AppState {
   duplicateDoc(id: string): void
   addGeneratedDoc(name: string, bytes: Uint8Array, pageCount: number): void
   replaceDocBytes(id: string, bytes: Uint8Array, pageCount: number): void
+  /** strip owner-password protection so a protected doc can be edited/signed */
+  unlockProtectedDoc(id: string): Promise<boolean>
   addFiles(files: IncomingFile[]): Promise<void>
   addFromPaths(paths: string[]): Promise<void>
   openFileDialog(): Promise<void>
@@ -202,6 +204,31 @@ export const useApp = create<AppState>((set, get) => ({
     }))
     const doc = get().docs.find((d) => d.id === id)
     if (doc) set({ previewPage: Math.min(get().previewPage, doc.pageCount - 1) })
+  },
+
+  async unlockProtectedDoc(id) {
+    const doc = get().docs.find((d) => d.id === id)
+    if (!doc) return false
+    try {
+      const { unlockPdf } = await import('./lib/unlockPdf')
+      const out = await unlockPdf(doc.bytes)
+      const pageCount = await getPageCount(out)
+      // replaceDocBytes bumps rev (re-renders) and resets status; clear the
+      // encrypted flag so the edit/sign paths treat it as a normal file
+      set((s) => ({
+        docs: s.docs.map((d) =>
+          d.id === id
+            ? { ...d, bytes: out, pageCount, rev: d.rev + 1, status: 'ready', encrypted: false, smart: undefined, override: undefined, signedPath: undefined }
+            : d,
+        ),
+      }))
+      return true
+    } catch {
+      window.dispatchEvent(
+        new ErrorEvent('error', { message: i18next.t('error.unlockFailed', { name: doc.name }) }),
+      )
+      return false
+    }
   },
 
   async addFiles(files) {

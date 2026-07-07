@@ -186,5 +186,11 @@
   "edit.ocr.off": "Texterkennung (OCR): aus — Klick für automatisch",
   "edit.retypeHintOcr": "Beliebigen Text anklicken, um ihn zu überdecken und neu zu schreiben — gescannter Text wird gelesen",
   "error.openFailed": "\"{{name}}\" konnte nicht geöffnet werden — bitte erneut auswählen",
-  "error.protectedEdit": "Dieses PDF ist passwortgeschützt und kann nicht neu aufgebaut werden — zuerst das Passwort entfernen, dann erneut versuchen"
+  "error.protectedEdit": "Dieses PDF ist passwortgeschützt und kann nicht neu aufgebaut werden — zuerst das Passwort entfernen, dann erneut versuchen",
+  "unlock.title": "Dieses PDF ist geschützt",
+  "unlock.body": "Ein Passwortschutz verhindert das Bearbeiten. Eine Kopie entsperren, um zu bearbeiten und zu signieren? Ihre Originaldatei bleibt unverändert.",
+  "unlock.action": "Entsperren",
+  "unlock.cancel": "Ohne Entsperren bearbeiten",
+  "unlock.working": "Wird entsperrt…",
+  "error.unlockFailed": "„{{name}}“ konnte nicht entsperrt werden — evtl. ist ein Öffnungspasswort nötig"
 }

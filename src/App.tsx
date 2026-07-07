@@ -22,9 +22,23 @@ export default function App() {
   const undoStash = useApp((s) => s.undoStash)
   const restoreRemoved = useApp((s) => s.restoreRemoved)
   const dismissUndo = useApp((s) => s.dismissUndo)
+  const docs = useApp((s) => s.docs)
+  const selectedDocId = useApp((s) => s.selectedDocId)
+  const unlockProtectedDoc = useApp((s) => s.unlockProtectedDoc)
   const [dragDepth, setDragDepth] = useState(0)
   const [mobileTab, setMobileTab] = useState<MobileTab>('docs')
   const [appError, setAppError] = useState<string | null>(null)
+  const [unlockBusy, setUnlockBusy] = useState(false)
+  // protected docs the user chose to edit without unlocking — don't re-nag
+  const [unlockDeclined, setUnlockDeclined] = useState<string[]>([])
+
+  // Offer to unlock a protected document the moment the user enters Edit on
+  // it — editing/signing a protected file cannot rebuild it otherwise.
+  const selectedDoc = docs.find((d) => d.id === selectedDocId)
+  const promptUnlock =
+    view === 'edit' &&
+    !!selectedDoc?.encrypted &&
+    !unlockDeclined.includes(selectedDoc.id)
 
   // Production resilience: surface unexpected failures instead of dying
   // silently. Routine render cancellations and observer churn are ignored.
@@ -127,6 +141,35 @@ export default function App() {
       {dragDepth > 0 && (
         <div className="drop-veil">
           <div className="drop-veil-card">{t('stage.dropHint')}</div>
+        </div>
+      )}
+      {promptUnlock && selectedDoc && (
+        <div className="modal-veil">
+          <div className="modal dialog confirm-dialog" role="dialog" aria-modal="true">
+            <h2>{t('unlock.title')}</h2>
+            <p className="muted">{t('unlock.body')}</p>
+            <div className="dialog-actions">
+              <button
+                className="ghost-btn"
+                disabled={unlockBusy}
+                onClick={() => setUnlockDeclined((d) => [...d, selectedDoc.id])}
+              >
+                {t('unlock.cancel')}
+              </button>
+              <div className="spacer" />
+              <button
+                className="btn-primary"
+                disabled={unlockBusy}
+                onClick={async () => {
+                  setUnlockBusy(true)
+                  await unlockProtectedDoc(selectedDoc.id)
+                  setUnlockBusy(false)
+                }}
+              >
+                {unlockBusy ? t('unlock.working') : t('unlock.action')}
+              </button>
+            </div>
+          </div>
         </div>
       )}
       {appError && (

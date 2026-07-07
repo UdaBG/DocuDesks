@@ -186,5 +186,11 @@
   "edit.ocr.off": "Textigenkänning (OCR): av — klicka för automatisk",
   "edit.retypeHintOcr": "Klicka på valfri text för att täcka och skriva om den — läsning av skannad text är på",
   "error.openFailed": "Kunde inte öppna ”{{name}}” — försök välja den igen",
-  "error.protectedEdit": "Denna PDF är lösenordsskyddad och kan inte byggas om — ta bort lösenordet först och försök igen"
+  "error.protectedEdit": "Denna PDF är lösenordsskyddad och kan inte byggas om — ta bort lösenordet först och försök igen",
+  "unlock.title": "Denna PDF är skyddad",
+  "unlock.body": "Ett lösenordsskydd hindrar redigering. Lås upp en kopia för att redigera och signera? Din originalfil ändras inte.",
+  "unlock.action": "Lås upp",
+  "unlock.cancel": "Redigera utan att låsa upp",
+  "unlock.working": "Låser upp…",
+  "error.unlockFailed": "Kunde inte låsa upp ”{{name}}” — den kan kräva ett öppningslösenord"
 }

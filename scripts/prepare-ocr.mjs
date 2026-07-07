@@ -21,6 +21,15 @@ for (const [src, dst] of copies) {
   console.log('staged', dst)
 }
 
+// qpdf-wasm — unlock owner-password-protected PDFs offline (bundled classic
+// UMD script + its wasm), same self-hosted pattern as the OCR runtime
+const QPDF_OUT = path.resolve('public', 'qpdf')
+await mkdir(QPDF_OUT, { recursive: true })
+for (const f of ['qpdf.js', 'qpdf.wasm']) {
+  await copyFile(path.resolve('node_modules/@neslinesli93/qpdf-wasm/dist', f), path.join(QPDF_OUT, f))
+  console.log('staged qpdf/' + f)
+}
+
 const lang = path.join(OUT, 'eng.traineddata.gz')
 const exists = await stat(lang).then(() => true, () => false)
 if (!exists) {

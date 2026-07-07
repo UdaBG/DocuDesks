@@ -1,7 +1,7 @@
 {
   "name": "docudesk",
   "productName": "DocuDesk",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "description": "Bulk-sign and edit PDF documents. Sign one, sign them all.",
   "author": "DocuDesk",
   "license": "MIT",
@@ -53,6 +53,7 @@
     "zustand": "^5.0.14"
   },
   "dependencies": {
+    "@neslinesli93/qpdf-wasm": "^0.3.0",
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-dialog": "^2.7.1",
     "@tauri-apps/plugin-fs": "^2.5.1",
