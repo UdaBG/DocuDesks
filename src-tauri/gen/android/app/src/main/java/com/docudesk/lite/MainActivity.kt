@@ -45,8 +45,9 @@ class MainActivity : TauriActivity() {
    * pick result is then dropped, or replayed into the NEXT pick's callback
    * (documents appearing one pick late). Every activity result physically
    * passes through here first, so successful picks are ALSO forwarded
-   * straight to the web app, which de-duplicates already-open files and
-   * ignores non-PDF targets (e.g. freshly created save-dialog files).
+   * straight to the web app, which de-duplicates already-open files. The
+   * save dialog also passes through here; the web app suppresses those (it
+   * knows when its own save is in flight) so its output isn't re-imported.
    */
   override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
     super.onActivityResult(requestCode, resultCode, data)

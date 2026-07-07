@@ -11,6 +11,15 @@ import type { SignerApi } from '../../electron/preload'
  *  save dialog rather than into a directory. */
 const PER_FILE_OUTPUT = 'per-file'
 
+/** Window flags the mobile save path sets so the Android file-pick safety net
+ *  (main.tsx) can tell the app's own save output apart from a user's open. */
+export interface SaveGuard {
+  /** epoch ms; ignore forwarded picks until this time (a save is in flight) */
+  __signerSavingUntil?: number
+  /** exact content URIs the app just saved to — never re-import these */
+  __signerSavedUris?: Set<string>
+}
+
 export function isTauri(): boolean {
   return '__TAURI_INTERNALS__' in window
 }
@@ -74,13 +83,28 @@ export function createTauriApi(): SignerApi {
       if (dir === PER_FILE_OUTPUT) {
         // Android/iOS: the system "create document" dialog picks the spot and
         // hands back a content URI the fs plugin can write to.
-        const target = await save({
-          defaultPath: name,
-          filters: [{ name: 'PDF documents', extensions: ['pdf'] }],
-        })
-        if (!target) return ''
-        await writeFile(target, data)
-        return target
+        //
+        // That dialog produces an activity result that MainActivity forwards to
+        // the file-pick safety net exactly like an *open* would — and once we
+        // write into it the file is a valid PDF, so the net would happily
+        // re-import our own output as a new document. Mark a suppression window
+        // (and remember the URI) so the net skips it. See main.tsx.
+        const w = window as unknown as SaveGuard
+        w.__signerSavingUntil = Date.now() + 8000
+        try {
+          const target = await save({
+            defaultPath: name,
+            filters: [{ name: 'PDF documents', extensions: ['pdf'] }],
+          })
+          if (!target) return ''
+          ;(w.__signerSavedUris ??= new Set<string>()).add(target)
+          await writeFile(target, data)
+          w.__signerSavingUntil = Date.now() + 8000 // keep it suppressed past the write, too
+          return target
+        } catch (e) {
+          w.__signerSavingUntil = Date.now() + 2000
+          throw e
+        }
       }
       const dot = name.lastIndexOf('.')
       const stem = dot > 0 ? name.slice(0, dot) : name

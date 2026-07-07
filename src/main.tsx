@@ -13,7 +13,7 @@ import '@fontsource/homemade-apple'
 import './styles.css'
 import App from './App'
 import { useApp } from './store'
-import { createTauriApi, isTauri } from './platform/tauriApi'
+import { createTauriApi, isTauri, type SaveGuard } from './platform/tauriApi'
 
 // Under Tauri there is no Electron preload — install the equivalent API.
 if (isTauri()) {
@@ -50,11 +50,20 @@ void import('./lib/ocr').then((m) => {
 // Safety net for Android file picks (delivered from MainActivity, which sees
 // every activity result even when Tauri's plugin callback was lost to an
 // activity recreation behind the picker). Files already added — the normal
-// delivery path won the race — are de-duplicated by the store; non-PDF or
-// empty targets (a save dialog's freshly created file) are ignored.
+// delivery path won the race — are de-duplicated by the store.
+//
+// The catch: the *save* dialog also produces an activity result, and once we
+// write into its target the file is a valid PDF — so without a guard the net
+// re-imports our own signed/edited output as a phantom new document. The
+// mobile save path (tauriApi.writeSigned) marks a suppression window and the
+// exact saved URI; we skip both here. We still return true so MainActivity
+// stops retrying the delivery.
 ;(window as unknown as Record<string, unknown>).__androidPickedFiles = (uris: string[]) => {
+  const guard = window as unknown as SaveGuard
+  const saving = Date.now() < (guard.__signerSavingUntil ?? 0)
   void (async () => {
     for (const uri of uris) {
+      if (saving || guard.__signerSavedUris?.has(uri)) continue // our own save output — not a pick
       try {
         const bytes = new Uint8Array(await window.signer.readFile(uri))
         const isPdf =

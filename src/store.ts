@@ -34,6 +34,30 @@ export function outputBytesFor(doc: SigDoc): Promise<Uint8Array> {
     : Promise.resolve(doc.bytes)
 }
 
+/**
+ * The bytes a single document should be *saved or printed* as: its edited
+ * version (exactly what "Save edited PDF" builds) with the stack's signature
+ * stamped on top. Both the Sign side and the Edit side finalize through this,
+ * so saving from either yields the same file — edits *and* signature together,
+ * never one without the other.
+ */
+export async function finalizedBytesFor(doc: SigDoc): Promise<Uint8Array> {
+  const { mode, placement, signatures, activeSignatureId, extraStamps, primaryRemoved } =
+    useApp.getState()
+  const activeSignature = signatures.find((s) => s.id === activeSignatureId)
+  const stamps = buildStampsFor(
+    doc,
+    mode,
+    placement,
+    extraStamps,
+    signatures,
+    activeSignature,
+    primaryRemoved,
+  )
+  const base = await outputBytesFor(doc)
+  return stamps.length ? applyStamps(base, stamps) : base
+}
+
 export interface IncomingFile {
   name: string
   bytes: Uint8Array
@@ -640,7 +664,7 @@ export const useApp = create<AppState>((set, get) => ({
       } else {
         try {
           // merge this doc's unsaved edits, then stamp the (stack-wide) signature
-          const out = await applyStamps(await outputBytesFor(doc), stamps)
+          const out = await finalizedBytesFor(doc)
           const written = await window.signer.writeSigned(dir, signedName(doc.name), out)
           if (!written) {
             // user dismissed the per-file save dialog (mobile) — not an error
@@ -668,17 +692,13 @@ export const useApp = create<AppState>((set, get) => ({
   },
 
   async printAll() {
-    const { docs, mode, placement, signatures, activeSignatureId, extraStamps, primaryRemoved } = get()
-    const activeSignature = signatures.find((s) => s.id === activeSignatureId)
-    const targets = docs.filter((d) => d.status !== 'error')
+    const targets = get().docs.filter((d) => d.status !== 'error')
     if (!targets.length) return
 
     set({ signing: { done: 0, total: targets.length } })
     try {
       for (const doc of targets) {
-        const stamps = buildStampsFor(doc, mode, placement, extraStamps, signatures, activeSignature, primaryRemoved)
-        const base = await outputBytesFor(doc)
-        const bytes = stamps.length ? await applyStamps(base, stamps) : base
+        const bytes = await finalizedBytesFor(doc)
         await window.signer.printPdfData(signedName(doc.name), bytes)
         set((s) => ({ signing: s.signing && { ...s.signing, done: s.signing.done + 1 } }))
         await new Promise((r) => setTimeout(r, 0))

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useApp, sessionHasEdits } from '../store'
+import { useApp, sessionHasEdits, finalizedBytesFor } from '../store'
 import { useEdit } from '../editor/editStore'
 import { buildEditedPdf } from '../editor/exportPdf'
 import { getPageCount } from '../lib/pdf'
@@ -35,10 +35,14 @@ function EditActionBar() {
 
   const hasEdits = !!doc && sessionHasEdits(session, doc)
 
-  async function build(): Promise<Uint8Array | null> {
+  // withSignature: the saved/printed copy carries the edits *and* the stack's
+  // signature, matching what the Sign side produces. "Apply to stack" passes
+  // false — it only bakes the edits into the base so a later sign can stamp on
+  // top (baking the signature here would double it).
+  async function build(withSignature: boolean): Promise<Uint8Array | null> {
     if (!doc || !session) return null
     try {
-      return await buildEditedPdf(doc.bytes, session)
+      return withSignature ? await finalizedBytesFor(doc) : await buildEditedPdf(doc.bytes, session)
     } catch (e) {
       // protected files often cannot be rebuilt at all (their objects stay
       // encrypted) — say that instead of surfacing pdf-lib internals
@@ -55,7 +59,7 @@ function EditActionBar() {
     if (!doc) return
     setBusy(true)
     try {
-      const bytes = await build()
+      const bytes = await build(false)
       if (!bytes) return
       const pageCount = await getPageCount(bytes)
       dropSession(doc.id)
@@ -69,7 +73,7 @@ function EditActionBar() {
     if (!doc) return
     setBusy(true)
     try {
-      const bytes = await build()
+      const bytes = await build(true)
       if (bytes) await window.signer.printPdfData(editedName(doc.name), bytes)
     } finally {
       setBusy(false)
@@ -80,7 +84,7 @@ function EditActionBar() {
     if (!doc) return
     setBusy(true)
     try {
-      const bytes = await build()
+      const bytes = await build(true)
       if (!bytes) return
       const dir = await window.signer.chooseOutputDir()
       if (!dir) return
