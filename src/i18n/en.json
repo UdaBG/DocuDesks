@@ -185,5 +185,6 @@
   "edit.ocr.on": "Text recognition (OCR): on for all pages — click to turn off",
   "edit.ocr.off": "Text recognition (OCR): off — click for automatic",
   "edit.retypeHintOcr": "Click any text in the document to cover it and retype — reading scanned text is on",
-  "error.openFailed": "Could not open \"{{name}}\" — try picking it again"
+  "error.openFailed": "Could not open \"{{name}}\" — try picking it again",
+  "error.protectedEdit": "This PDF is password-protected and cannot be rebuilt — remove its password first, then try again"
 }

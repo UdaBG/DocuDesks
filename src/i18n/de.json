@@ -185,5 +185,6 @@
   "edit.ocr.on": "Texterkennung (OCR): für alle Seiten an — Klick schaltet aus",
   "edit.ocr.off": "Texterkennung (OCR): aus — Klick für automatisch",
   "edit.retypeHintOcr": "Beliebigen Text anklicken, um ihn zu überdecken und neu zu schreiben — gescannter Text wird gelesen",
-  "error.openFailed": "\"{{name}}\" konnte nicht geöffnet werden — bitte erneut auswählen"
+  "error.openFailed": "\"{{name}}\" konnte nicht geöffnet werden — bitte erneut auswählen",
+  "error.protectedEdit": "Dieses PDF ist passwortgeschützt und kann nicht neu aufgebaut werden — zuerst das Passwort entfernen, dann erneut versuchen"
 }

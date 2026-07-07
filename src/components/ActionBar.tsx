@@ -42,7 +42,18 @@ function EditActionBar() {
 
   async function build(): Promise<Uint8Array | null> {
     if (!doc || !session) return null
-    return buildEditedPdf(doc.bytes, session)
+    try {
+      return await buildEditedPdf(doc.bytes, session)
+    } catch (e) {
+      // protected files often cannot be rebuilt at all (their objects stay
+      // encrypted) — say that instead of surfacing pdf-lib internals
+      window.dispatchEvent(
+        new ErrorEvent('error', {
+          message: doc.encrypted ? t('error.protectedEdit') : String((e as Error)?.message ?? e),
+        }),
+      )
+      return null
+    }
   }
 
   async function applyToStack() {

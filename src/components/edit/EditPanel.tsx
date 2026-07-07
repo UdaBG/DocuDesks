@@ -64,7 +64,11 @@ export default function EditPanel() {
   const textObj: TextObj | null = selected?.kind === 'text' ? selected : null
   const showText = tool === 'text' || tool === 'retype' || !!textObj
   const showPen = tool === 'pen' || selected?.kind === 'ink'
-  const showStroke = !showText
+  // whiteout covers have exactly one property: their fill. It auto-matches
+  // the page background when drawn; this control overrides it.
+  const whiteoutObj = selected?.kind === 'whiteout' ? selected : null
+  const whiteoutContext = tool === 'whiteout' || !!whiteoutObj
+  const showStroke = !showText && !whiteoutContext
   const showFill =
     tool === 'rect' || tool === 'ellipse' || selected?.kind === 'rect' || selected?.kind === 'ellipse'
   const showDash =
@@ -218,6 +222,17 @@ export default function EditPanel() {
               ))}
             </div>
           </div>
+        )}
+
+        {whiteoutContext && (
+          <ColorField
+            label={t('edit.fill')}
+            value={whiteoutObj?.fill ?? style.whiteoutFill}
+            onChange={(v) => {
+              const c = v ?? '#ffffff'
+              apply({ whiteoutFill: c }, whiteoutObj ? { fill: c } : null)
+            }}
+          />
         )}
 
         {showStroke && (

@@ -583,7 +583,10 @@ export const useApp = create<AppState>((set, get) => ({
           }
         } catch (e) {
           skipped++
-          patchDoc(set, doc.id, { status: 'error', error: String(e) })
+          patchDoc(set, doc.id, {
+            status: 'error',
+            error: doc.encrypted ? i18next.t('error.protectedEdit') : String(e),
+          })
         }
       }
       set((s) => ({ signing: s.signing && { ...s.signing, done: s.signing.done + 1 } }))

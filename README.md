@@ -161,8 +161,10 @@ with Xcode. All mobile icons are already generated in `src-tauri/icons/`.
 - **Bundled fallback fonts on Android** — retype matches installed fonts via
   `queryLocalFonts`, which only exists on desktop; mobile retype falls back to
   the standard PDF fonts. Ship a small set of metric-compatible faces.
-- **Encrypted PDFs** — password-protected files are currently loaded
-  best-effort (`ignoreEncryption`); detect them and warn instead.
+- **Unlock protected PDFs** — files with owner-password protection are
+  flagged and often cannot be rebuilt at all (their objects stay encrypted;
+  pdf-lib throws mid-save — surfaced as a clear error since 0.1.13). A
+  bundled qpdf-wasm "remove protection" step would make them fully editable.
 - **Complex-script text** (සිංහල, Arabic, Indic) — pdf-lib does not shape
   glyphs, so typed/retyped text in these scripts renders unshaped; needs a
   shaping engine (HarfBuzz-wasm) or an honest warning in the UI.

@@ -146,9 +146,18 @@ async function sampleRunColorHiRes(
   return inkFromPixels(ctx.getImageData(0, 0, w, h).data)
 }
 
+function medianColor(rs: number[], gs: number[], bs: number[]): string | null {
+  if (rs.length < 16) return null
+  const median = (a: number[]) => a.sort((x1, x2) => x1 - x2)[Math.floor(a.length / 2)]
+  const to = (v: number) => v.toString(16).padStart(2, '0')
+  return `#${to(median(rs))}${to(median(gs))}${to(median(bs))}`
+}
+
 /**
- * The paper tone of a region — the median of its light pixels. Scanned pages
- * are rarely pure white, so covers on them should match the scan, not #fff.
+ * The paper tone behind a text run — the channel-wise median of the padded
+ * region's pixels. Ink covers a minority of the area, so the median lands on
+ * the background whatever its colour: white paper, a tinted table cell, a
+ * scan's off-white, even dark themes.
  */
 function samplePaperColor(
   canvas: HTMLCanvasElement,
@@ -177,17 +186,62 @@ function samplePaperColor(
   const gs: number[] = []
   const bs: number[] = []
   for (let i = 0; i < data.length; i += 16) {
-    const lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
-    if (lum > 160 && data[i + 3] > 200) {
+    if (data[i + 3] > 200) {
       rs.push(data[i])
       gs.push(data[i + 1])
       bs.push(data[i + 2])
     }
   }
-  if (rs.length < 24) return null
-  const median = (a: number[]) => a.sort((x1, x2) => x1 - x2)[Math.floor(a.length / 2)]
-  const to = (v: number) => v.toString(16).padStart(2, '0')
-  return `#${to(median(rs))}${to(median(gs))}${to(median(bs))}`
+  return medianColor(rs, gs, bs)
+}
+
+/**
+ * The background around a rectangle — sampled from a thin ring just OUTSIDE
+ * it. Used for whiteout covers: the interior is the content being hidden, so
+ * the surrounding band is what the patch must blend into.
+ */
+function sampleBandColor(
+  canvas: HTMLCanvasElement,
+  xf: number,
+  yf: number,
+  wf: number,
+  hf: number,
+): string | null {
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return null
+  const pad = Math.max(4, Math.round(canvas.width * 0.006))
+  const ix = Math.round(xf * canvas.width)
+  const iy = Math.round(yf * canvas.height)
+  const iw = Math.round(wf * canvas.width)
+  const ih = Math.round(hf * canvas.height)
+  const rs: number[] = []
+  const gs: number[] = []
+  const bs: number[] = []
+  const collect = (x: number, y: number, w: number, h: number) => {
+    x = Math.max(0, x)
+    y = Math.max(0, y)
+    w = Math.min(canvas.width - x, w)
+    h = Math.min(canvas.height - y, h)
+    if (w <= 0 || h <= 0) return
+    let data: Uint8ClampedArray
+    try {
+      data = ctx.getImageData(x, y, w, h).data
+    } catch {
+      return
+    }
+    for (let i = 0; i < data.length; i += 8) {
+      if (data[i + 3] > 200) {
+        rs.push(data[i])
+        gs.push(data[i + 1])
+        bs.push(data[i + 2])
+      }
+    }
+  }
+  collect(ix - pad, iy - pad, iw + pad * 2, pad) // top strip
+  collect(ix - pad, iy + ih, iw + pad * 2, pad) // bottom strip
+  collect(ix - pad, iy, pad, ih) // left strip
+  collect(ix + iw, iy, pad, ih) // right strip
+  return medianColor(rs, gs, bs)
 }
 
 /** Dominant ink color of a region of the rendered page canvas, or null. */
@@ -937,11 +991,11 @@ export default function EditStage() {
       if (seq !== retypeSeqRef.current) return
     }
 
-    // covers on scans must match the paper tone, which is rarely pure white
-    const paper =
-      best.ocr && view.canvas
-        ? samplePaperColor(view.canvas, runX, hPt - coverTopY, runW, coverTopY - coverBotY, wPt, hPt)
-        : null
+    // covers must match the paper behind the text — white pages sample as
+    // white, but tinted table cells, scans and dark themes get their tone
+    const paper = view.canvas
+      ? samplePaperColor(view.canvas, runX, hPt - coverTopY, runW, coverTopY - coverBotY, wPt, hPt)
+      : null
 
     pushHistory(doc.id)
     const cover = {
@@ -1194,8 +1248,16 @@ export default function EditStage() {
         ((draft.kind === 'line' || draft.kind === 'arrow') &&
           Math.hypot(draft.x2 - draft.x1, draft.y2 - draft.y1) > 0.005)
       if (big) {
-        addObject(doc.id, draft)
-        select(doc.id, draft.id)
+        let obj = draft
+        if (draft.kind === 'whiteout' && view?.canvas) {
+          // blend into the page: the interior is the content being hidden,
+          // so sample the surrounding band (the drawn cover stays selected —
+          // its colour can be changed in the panel)
+          const band = sampleBandColor(view.canvas, draft.x, draft.y, draft.w, draft.h)
+          if (band) obj = { ...draft, fill: band }
+        }
+        addObject(doc.id, obj)
+        select(doc.id, obj.id)
       }
       setDraft(null)
     }

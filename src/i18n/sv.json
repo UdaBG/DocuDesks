@@ -185,5 +185,6 @@
   "edit.ocr.on": "Textigenkänning (OCR): på för alla sidor — klicka för att stänga av",
   "edit.ocr.off": "Textigenkänning (OCR): av — klicka för automatisk",
   "edit.retypeHintOcr": "Klicka på valfri text för att täcka och skriva om den — läsning av skannad text är på",
-  "error.openFailed": "Kunde inte öppna ”{{name}}” — försök välja den igen"
+  "error.openFailed": "Kunde inte öppna ”{{name}}” — försök välja den igen",
+  "error.protectedEdit": "Denna PDF är lösenordsskyddad och kan inte byggas om — ta bort lösenordet först och försök igen"
 }
