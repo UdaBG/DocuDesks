@@ -1245,6 +1245,27 @@ input[type='range'] {
   opacity: 0.35;
 }
 
+/* on-box quick colour chip (phones) — floats at the text box's top-right */
+.eo-colorchip {
+  position: absolute;
+  z-index: 7;
+}
+.eo-colorchip-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 5px rgba(18, 22, 31, 0.4);
+  touch-action: none;
+  cursor: pointer;
+}
+/* the mixer opens below the chip and must clear the stage chrome */
+.eo-colorchip .color-popover {
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+}
+
 /* dash-style toggles (edit panel shapes) */
 .dash-toggles {
   display: flex;

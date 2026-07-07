@@ -10,8 +10,10 @@ import { openPdf, renderPage, type OpenedPdf } from '../../lib/pdf'
 import { ocrPage, pageLooksScanned, setOcrProgress } from '../../lib/ocr'
 import { inkToSvgPath, PEN_PROFILES } from '../../lib/drawing'
 import { fontById, matchFontFromPdf } from '../../editor/fonts'
+import { useMediaQuery } from '../../lib/useMediaQuery'
 import EditToolbar from './EditToolbar'
 import PagesStrip from './PagesStrip'
+import { ColorPopover } from './ColorField'
 
 const TOOL_KEYS: Record<string, ToolId> = {
   v: 'select',
@@ -389,6 +391,10 @@ export default function EditStage() {
   const retypeSeqRef = useRef(0)
   /** text/retype: a clean tap opens a box, a slide pans (see onOverlayPointer*) */
   const tapRef = useRef<{ xf: number; yf: number; x: number; y: number; moved: boolean } | null>(null)
+  // on-box quick colour chip (phones only — desktop has the always-visible
+  // panel); holds the text-object id whose mixer is open
+  const narrow = useMediaQuery('(max-width: 760px)')
+  const [colorMixerFor, setColorMixerFor] = useState<string | null>(null)
   const openedRef = useRef<{ key: string; opened: OpenedPdf } | null>(null)
   const [view, setView] = useState<PageView | null>(null)
   /** magnifier loupe while color-sampling: overlay CSS position + source device px */
@@ -1604,10 +1610,17 @@ export default function EditStage() {
                   }}
                   onChange={(e) => updateObject(doc.id, o.id, { text: e.target.value })}
                   onBlur={(e) => {
-                    // Moving focus into the properties panel or the color
-                    // picker means the user is styling this box — keep it open.
+                    // Moving focus into the properties panel, the color mixer,
+                    // or the on-box colour chip means the user is styling this
+                    // box — keep it open.
                     const to = e.relatedTarget as HTMLElement | null
-                    if (to && (to.closest('.right-panel') || to.closest('.color-popover'))) return
+                    if (
+                      to &&
+                      (to.closest('.right-panel') ||
+                        to.closest('.color-popover') ||
+                        to.closest('.eo-colorchip'))
+                    )
+                      return
                     finishTextEdit(o.id)
                   }}
                   onKeyDown={(e) => {
@@ -1648,6 +1661,48 @@ export default function EditStage() {
                 </div>
               )
             })}
+
+            {/* phone-only quick colour chip on the active text box — desktop
+                uses the always-visible properties panel. Applies to the whole
+                box (both while typing and when selected). */}
+            {narrow &&
+              all
+                .filter(
+                  (o): o is TextObj =>
+                    o.kind === 'text' &&
+                    (session?.editingId === o.id || session?.selectedId === o.id),
+                )
+                .map((o) => (
+                  <div
+                    key={`chip-${o.id}`}
+                    className="eo-colorchip"
+                    style={{
+                      left: Math.min((o.x + o.w) * view.W - 28, view.W - 30),
+                      top: Math.max(2, o.y * view.H - 34),
+                    }}
+                  >
+                    <button
+                      className="eo-colorchip-btn"
+                      style={{ background: o.color }}
+                      title={t('edit.textColor')}
+                      aria-label={t('edit.textColor')}
+                      // pointerdown, not click: fire before the textarea blurs
+                      onPointerDown={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        if (colorMixerFor !== o.id) pushHistory(doc.id)
+                        setColorMixerFor(colorMixerFor === o.id ? null : o.id)
+                      }}
+                    />
+                    {colorMixerFor === o.id && (
+                      <ColorPopover
+                        value={/^#[0-9a-f]{6}$/i.test(o.color) ? o.color : '#1c1c1e'}
+                        onChange={(v) => updateObject(doc.id, o.id, { color: v })}
+                        onClose={() => setColorMixerFor(null)}
+                      />
+                    )}
+                  </div>
+                ))}
 
             {selected && view && selected.pageId === view.pageId && !session?.editingId && (
               <SelectionUi
