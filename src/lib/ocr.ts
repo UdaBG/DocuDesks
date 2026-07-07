@@ -58,14 +58,21 @@ function log(entry: string): void {
 function getWorker(): Promise<Worker> {
   if (!workerPromise) {
     const base = new URL('ocr/', document.baseURI).href
+    // ?v=<appVersion> defeats any WebView HTTP cache after an in-place update
+    // (these public assets have stable URLs, unlike the hashed main bundle)
+    const v = `?v=${__APP_VERSION__}`
     workerPromise = createWorker('eng', 1, {
-      workerPath: `${base}worker.min.js`,
-      corePath: `${base}tesseract-core-simd-lstm.wasm.js`,
+      workerPath: `${base}worker.min.js${v}`,
+      corePath: `${base}tesseract-core-simd-lstm.wasm.js${v}`,
       langPath: base.slice(0, -1),
       gzip: true,
       // run the worker from its real URL: a blob-wrapped worker loses its
       // script directory, and the emscripten glue then cannot locate the wasm
       workerBlobURL: false,
+      // the model is bundled — don't also cache it to IndexedDB, which would
+      // persist across updates and could serve a stale/corrupt copy (the
+      // kind of state that "uninstall first" used to clear)
+      cacheMethod: 'none',
       logger: (m) => {
         log(`${m.status} ${Math.round((m.progress ?? 0) * 100)}%`)
         if (m.status === 'recognizing text') progressCb?.(m.progress ?? 0)

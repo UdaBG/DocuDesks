@@ -1,5 +1,10 @@
+import { readFileSync } from 'node:fs'
 import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
+
+// App version — stamped into bundled-asset URLs so a WebView can never serve a
+// previous version's cached wasm/worker after an in-place update.
+const appVersion = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version
 
 // Inject a strict CSP only in production builds. In dev, the React fast-refresh
 // preamble needs inline scripts, so the CSP would have to be too loose to matter.
@@ -31,6 +36,9 @@ function prodCsp(): Plugin {
 export default defineConfig({
   base: './',
   plugins: [react(), prodCsp()],
+  define: {
+    __APP_VERSION__: JSON.stringify(appVersion),
+  },
   server: {
     port: 5173,
     strictPort: true, // tauri.conf.json devUrl points here

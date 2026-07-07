@@ -25,11 +25,13 @@ let factoryPromise: Promise<QpdfFactory> | null = null
 function loadFactory(): Promise<QpdfFactory> {
   if (!factoryPromise) {
     const base = new URL('qpdf/', document.baseURI).href
+    // ?v=<appVersion>: same-URL public asset, cache-busted per app version
+    const v = `?v=${__APP_VERSION__}`
     factoryPromise = new Promise<QpdfFactory>((resolve, reject) => {
       const existing = (window as unknown as { Module?: QpdfFactory }).Module
       if (existing) return resolve(existing)
       const s = document.createElement('script')
-      s.src = `${base}qpdf.js`
+      s.src = `${base}qpdf.js${v}`
       s.onload = () => {
         const mod = (window as unknown as { Module?: QpdfFactory }).Module
         if (mod) resolve(mod)
@@ -57,7 +59,7 @@ const OK_CODES = new Set([0, 3])
 export async function unlockPdf(bytes: Uint8Array, password = ''): Promise<Uint8Array> {
   const factory = await loadFactory()
   const base = new URL('qpdf/', document.baseURI).href
-  const qpdf = await factory({ locateFile: () => `${base}qpdf.wasm` })
+  const qpdf = await factory({ locateFile: () => `${base}qpdf.wasm?v=${__APP_VERSION__}` })
   const inPath = '/in.pdf'
   const outPath = '/out.pdf'
   qpdf.FS.writeFile(inPath, bytes)

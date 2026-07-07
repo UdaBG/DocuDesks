@@ -4,6 +4,8 @@ declare global {
   interface Window {
     signer: SignerApi
   }
+  /** app version, injected by Vite (define) — used for asset cache-busting */
+  const __APP_VERSION__: string
 }
 
 export type PageAnchor = 'first' | 'last' | 'custom'

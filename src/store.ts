@@ -141,7 +141,18 @@ export const useApp = create<AppState>((set, get) => ({
     ])
     const language = (settings.language as LanguageCode) || matchLanguage(locale)
     await i18next.changeLanguage(language)
-    const signatures = Array.isArray(saved) ? saved : []
+    // a persisted store survives in-place updates and can be partially written
+    // (app killed mid-save) or predate a field — keep only well-formed entries
+    // so one bad record can't blank the studio or crash stamp rendering
+    const signatures = (Array.isArray(saved) ? saved : []).filter(
+      (s): s is SavedSignature =>
+        !!s &&
+        typeof s.id === 'string' &&
+        typeof s.dataUrl === 'string' &&
+        s.dataUrl.startsWith('data:') &&
+        typeof s.width === 'number' &&
+        typeof s.height === 'number',
+    )
     set({
       signatures,
       activeSignatureId: signatures[0]?.id ?? null,
