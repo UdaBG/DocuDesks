@@ -395,6 +395,9 @@ export default function EditStage() {
   // panel); holds the text-object id whose mixer is open
   const narrow = useMediaQuery('(max-width: 760px)')
   const [colorMixerFor, setColorMixerFor] = useState<string | null>(null)
+  // set when we blur the textarea to drop the keyboard for the colour mixer —
+  // tells the textarea's onBlur to keep the box open instead of committing it
+  const keepEditingRef = useRef(false)
   const openedRef = useRef<{ key: string; opened: OpenedPdf } | null>(null)
   const [view, setView] = useState<PageView | null>(null)
   /** magnifier loupe while color-sampling: overlay CSS position + source device px */
@@ -1610,6 +1613,12 @@ export default function EditStage() {
                   }}
                   onChange={(e) => updateObject(doc.id, o.id, { text: e.target.value })}
                   onBlur={(e) => {
+                    // Dropping the keyboard for the colour mixer blurs the
+                    // textarea programmatically — keep the box open.
+                    if (keepEditingRef.current) {
+                      keepEditingRef.current = false
+                      return
+                    }
                     // Moving focus into the properties panel, the color mixer,
                     // or the on-box colour chip means the user is styling this
                     // box — keep it open.
@@ -1690,8 +1699,21 @@ export default function EditStage() {
                       onPointerDown={(e) => {
                         e.preventDefault()
                         e.stopPropagation()
-                        if (colorMixerFor !== o.id) pushHistory(doc.id)
-                        setColorMixerFor(colorMixerFor === o.id ? null : o.id)
+                        const opening = colorMixerFor !== o.id
+                        if (opening) {
+                          pushHistory(doc.id)
+                          // drop the soft keyboard so the mixer isn't half
+                          // hidden behind it — you're picking a colour, not
+                          // typing. The box stays in edit mode (keepEditingRef
+                          // stops the blur from committing it); tap the text to
+                          // resume typing.
+                          const ta = document.querySelector('.eo-textarea') as HTMLTextAreaElement | null
+                          if (ta) {
+                            keepEditingRef.current = true
+                            ta.blur()
+                          }
+                        }
+                        setColorMixerFor(opening ? o.id : null)
                       }}
                     />
                     {colorMixerFor === o.id && (

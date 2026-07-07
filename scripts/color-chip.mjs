@@ -90,14 +90,24 @@ try {
   await waitFor(`!!document.querySelector('.eo-colorchip-btn')`, 'colour chip visible while typing')
   console.log('chip visible while typing')
 
-  // 2. tapping the chip opens the mixer
+  // ensure the textarea is focused (as it is while typing)
+  await evaluate(`(document.querySelector('.eo-textarea')?.focus(), true)`)
+  const focusedBefore = await evaluate(`(document.activeElement?.className || '').includes('eo-textarea')`)
+  if (!focusedBefore) fail('textarea not focused before opening the mixer')
+
+  // 2. tapping the chip opens the mixer AND drops the keyboard (blurs the
+  // textarea) while keeping the box in edit mode
   await evaluate(`(() => {
     const b = document.querySelector('.eo-colorchip-btn')
     b.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, pointerType: 'touch' }))
     return true
   })()`)
   await waitFor(`!!document.querySelector('.eo-colorchip .color-popover')`, 'mixer opens from chip')
-  console.log('mixer opens from chip')
+  const stillFocused = await evaluate(`(document.activeElement?.className || '').includes('eo-textarea')`)
+  const stillOpen = await evaluate(`!!${E}.sessions['${docId}'].editingId`)
+  console.log('mixer opened; textarea blurred (keyboard dropped):', !stillFocused, '; box still open:', stillOpen)
+  if (stillFocused) fail('keyboard was not dropped — textarea still focused, mixer will be occluded')
+  if (!stillOpen) fail('box closed when the mixer opened (blur guard failed)')
 
   // 3. choosing a colour recolours the WHOLE box
   await evaluate(`(() => {
