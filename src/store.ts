@@ -6,7 +6,33 @@ import { getPageCount, looksEncrypted } from './lib/pdf'
 import { detectSignatureSpot } from './lib/smartDetect'
 import { applyStamps, signedName, type StampInput } from './lib/pdfSign'
 import { useEdit } from './editor/editStore'
+import { buildEditedPdf } from './editor/exportPdf'
 import type { EditSession } from './editor/types'
+
+/** Does a doc's edit session hold anything that would change its output? */
+export function sessionHasEdits(session: EditSession | undefined, doc: SigDoc): boolean {
+  if (!session) return false
+  return (
+    session.objects.length > 0 ||
+    session.watermark !== null ||
+    session.pages.some((p) => p.src.type === 'blank') ||
+    session.pages.length !== doc.pageCount
+  )
+}
+
+/**
+ * The bytes to sign/print/preview for a document: its edited version when it
+ * has unsaved edits (built the same way "Save edited PDF" does), else the
+ * original. Edits stay live objects — they are merged at output time, not
+ * baked into the doc — so signing never forces an "Apply to stack" first and
+ * the edits remain undoable. Signatures are still stack-wide; edits per-doc.
+ */
+export function outputBytesFor(doc: SigDoc): Promise<Uint8Array> {
+  const session = useEdit.getState().sessions[doc.id]
+  return sessionHasEdits(session, doc)
+    ? buildEditedPdf(doc.bytes, session!)
+    : Promise.resolve(doc.bytes)
+}
 
 export interface IncomingFile {
   name: string
@@ -608,7 +634,8 @@ export const useApp = create<AppState>((set, get) => ({
         patchDoc(set, doc.id, { status: 'no-target' })
       } else {
         try {
-          const out = await applyStamps(doc.bytes, stamps)
+          // merge this doc's unsaved edits, then stamp the (stack-wide) signature
+          const out = await applyStamps(await outputBytesFor(doc), stamps)
           const written = await window.signer.writeSigned(dir, signedName(doc.name), out)
           if (!written) {
             // user dismissed the per-file save dialog (mobile) — not an error
@@ -645,7 +672,8 @@ export const useApp = create<AppState>((set, get) => ({
     try {
       for (const doc of targets) {
         const stamps = buildStampsFor(doc, mode, placement, extraStamps, signatures, activeSignature, primaryRemoved)
-        const bytes = stamps.length ? await applyStamps(doc.bytes, stamps) : doc.bytes
+        const base = await outputBytesFor(doc)
+        const bytes = stamps.length ? await applyStamps(base, stamps) : base
         await window.signer.printPdfData(signedName(doc.name), bytes)
         set((s) => ({ signing: s.signing && { ...s.signing, done: s.signing.done + 1 } }))
         await new Promise((r) => setTimeout(r, 0))

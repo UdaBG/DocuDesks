@@ -95,6 +95,11 @@ page editor on the selected document:
 - **Undo/redo** (Ctrl+Z / Ctrl+Y), delete selected object with Del.
 - **Save edited PDF** writes a `_edited.pdf` copy; **Apply to stack** replaces
   the in-memory document so you can bulk-sign the edited version immediately.
+- **Edit + sign in one pass** — edits and signatures coexist without a save
+  step between them. Switch freely between Sign and Edit without losing work;
+  the Sign preview shows your unsaved edits, and signing merges them into the
+  output automatically. Signatures stay stack-wide (one placement → every
+  document); edits stay per-document. No "Apply to stack" required first.
 
 ## How smart detect works
 
@@ -151,6 +156,11 @@ with Xcode. All mobile icons are already generated in `src-tauri/icons/`.
 
 **Next up**
 
+- **Shared zoomable canvas for the Sign view** — the Sign view fits the page
+  and offers page nav, but not the Edit view's smooth zoom/pan. Extract the
+  canvas (render + zoom/pan/gesture) into one component both views share, so
+  Sign gets zoom and both inherit the hardened gesture handling. (Phase 2 of
+  the unified edit+sign work.)
 - **Desktop auto-update** — the Electron build should check GitHub releases
   and update itself (electron-updater); the Android app should at least
   notify when a newer APK exists. Ends the manual download-reinstall loop.

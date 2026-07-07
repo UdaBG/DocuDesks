@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useApp } from '../store'
+import { useApp, sessionHasEdits } from '../store'
+import { useEdit } from '../editor/editStore'
+import { buildEditedPdf } from '../editor/exportPdf'
 import { openPdf, renderPage, type OpenedPdf, type RenderedPage } from '../lib/pdf'
 import { effectivePlacement, fitStampBox, resolvePageIndex } from '../types'
 import { ChevronLeftIcon, ChevronRightIcon, CloseIcon, DocMinusIcon, NibIcon, PlusIcon } from './icons'
@@ -46,11 +48,17 @@ export default function Stage() {
 
   const doc = docs.find((d) => d.id === selectedDocId)
   const signature = signatures.find((s) => s.id === activeSignatureId)
+  // the doc's edit session (if any) — the sign preview composites unsaved
+  // edits so it shows exactly what signing will produce
+  const editSession = useEdit((s) => (doc ? s.sessions[doc.id] : undefined))
 
   const spaceRef = useRef<HTMLDivElement>(null)
   const [space, setSpace] = useState({ w: 0, h: 0 })
   const openedRef = useRef<{ id: string; opened: OpenedPdf } | null>(null)
   const [rendered, setRendered] = useState<RenderedPage | null>(null)
+  // preview bytes = edited version when the doc has edits, else the original
+  const [preview, setPreview] = useState<{ key: string; bytes: Uint8Array } | null>(null)
+  const buildSeqRef = useRef(0)
   const dragRef = useRef<DragState | null>(null)
   /** pending ×-removal awaiting confirmation ('primary' or a stamp id) */
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null)
@@ -74,22 +82,52 @@ export default function Stage() {
     [],
   )
 
-  const docId = doc ? `${doc.id}:${doc.rev}` : undefined
   const docOk = !!doc && doc.status !== 'error'
+
+  // Build the preview bytes: the edited version when the doc has unsaved
+  // edits (same builder as signing), else the original. Runs once on entering
+  // the sign view / switching docs; edits don't change here.
+  useEffect(() => {
+    let cancelled = false
+    if (!doc) {
+      setPreview(null)
+      return
+    }
+    if (!sessionHasEdits(editSession, doc)) {
+      setPreview({ key: `${doc.id}:${doc.rev}`, bytes: doc.bytes })
+      return
+    }
+    const seq = ++buildSeqRef.current
+    void (async () => {
+      try {
+        const bytes = await buildEditedPdf(doc.bytes, editSession!)
+        if (!cancelled && seq === buildSeqRef.current) setPreview({ key: `${doc.id}:${doc.rev}:e${seq}`, bytes })
+      } catch {
+        // build failed (e.g. protected) — fall back to the original so the
+        // preview still renders; signing surfaces the real error
+        if (!cancelled && seq === buildSeqRef.current) setPreview({ key: `${doc.id}:${doc.rev}`, bytes: doc.bytes })
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [doc?.id, doc?.rev, editSession, doc])
+
+  const previewKey = preview?.key
   useEffect(() => {
     let cancelled = false
     async function run() {
-      if (!doc || !docOk || space.w < 80 || space.h < 80) {
+      if (!doc || !docOk || !preview || space.w < 80 || space.h < 80) {
         setRendered(null)
         return
       }
-      if (openedRef.current?.id !== docId) {
+      if (openedRef.current?.id !== preview.key) {
         const prev = openedRef.current
         openedRef.current = null
         if (prev) void prev.opened.close()
         let opened: OpenedPdf
         try {
-          opened = await openPdf(doc.bytes)
+          opened = await openPdf(preview.bytes)
         } catch {
           return
         }
@@ -97,9 +135,11 @@ export default function Stage() {
           void opened.close()
           return
         }
-        openedRef.current = { id: docId!, opened }
+        openedRef.current = { id: preview.key, opened }
       }
-      const page = clamp(previewPage, 0, doc.pageCount - 1)
+      // clamp to the rendered doc's own page count (edits may add/remove pages)
+      const n = openedRef.current!.opened.doc.numPages
+      const page = clamp(previewPage, 0, n - 1)
       const mx = space.w < 560 ? 30 : 120
       const my = space.h < 720 ? 76 : 130
       try {
@@ -114,7 +154,7 @@ export default function Stage() {
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [docId, docOk, previewPage, space.w, space.h])
+  }, [previewKey, docOk, previewPage, space.w, space.h])
 
   // --- placement boxes in CSS px -------------------------------------------
   const pl = doc && docOk ? effectivePlacement(doc, mode, placement) : null

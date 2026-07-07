@@ -32,6 +32,21 @@ void import('./lib/ocr').then((m) => {
   ;(window as unknown as Record<string, unknown>).__ocrSelfTest = m.ocrSelfTest
 })
 
+// Test helper: extract the text layer of a PDF (used to verify that edits are
+// merged into signed/printed output).
+;(window as unknown as Record<string, unknown>).__pdfText = async (bytes: ArrayLike<number>) => {
+  const { openPdf } = await import('./lib/pdf')
+  const { doc, close } = await openPdf(new Uint8Array(bytes))
+  let out = ''
+  for (let p = 1; p <= doc.numPages; p++) {
+    const page = await doc.getPage(p)
+    const tc = await page.getTextContent()
+    out += tc.items.map((i) => ('str' in i ? i.str : '')).join(' ') + '\n'
+  }
+  await close()
+  return out
+}
+
 // Safety net for Android file picks (delivered from MainActivity, which sees
 // every activity result even when Tauri's plugin callback was lost to an
 // activity recreation behind the picker). Files already added — the normal
