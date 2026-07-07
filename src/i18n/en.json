@@ -190,7 +190,7 @@
   "unlock.title": "This PDF is protected",
   "unlock.body": "It has password protection that blocks editing. Unlock a copy so you can edit and sign it? Your original file is not changed.",
   "unlock.action": "Unlock",
-  "unlock.cancel": "Edit without unlocking",
+  "unlock.cancel": "Not now",
   "unlock.working": "Unlocking…",
   "error.unlockFailed": "Could not unlock \"{{name}}\" — it may need an open password",
   "stage.prevPage": "Previous page",

@@ -190,7 +190,7 @@
   "unlock.title": "Dieses PDF ist geschützt",
   "unlock.body": "Ein Passwortschutz verhindert das Bearbeiten. Eine Kopie entsperren, um zu bearbeiten und zu signieren? Ihre Originaldatei bleibt unverändert.",
   "unlock.action": "Entsperren",
-  "unlock.cancel": "Ohne Entsperren bearbeiten",
+  "unlock.cancel": "Jetzt nicht",
   "unlock.working": "Wird entsperrt…",
   "error.unlockFailed": "„{{name}}“ konnte nicht entsperrt werden — evtl. ist ein Öffnungspasswort nötig",
   "stage.prevPage": "Vorherige Seite",

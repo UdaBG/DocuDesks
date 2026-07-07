@@ -190,7 +190,7 @@
   "unlock.title": "Este PDF está protegido",
   "unlock.body": "Tiene una protección con contraseña que impide editarlo. ¿Desbloquear una copia para editarla y firmarla? Tu archivo original no se modifica.",
   "unlock.action": "Desbloquear",
-  "unlock.cancel": "Editar sin desbloquear",
+  "unlock.cancel": "Ahora no",
   "unlock.working": "Desbloqueando…",
   "error.unlockFailed": "No se pudo desbloquear «{{name}}» — puede requerir una contraseña de apertura",
   "stage.prevPage": "Página anterior",

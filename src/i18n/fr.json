@@ -190,7 +190,7 @@
   "unlock.title": "Ce PDF est protégé",
   "unlock.body": "Une protection par mot de passe empêche la modification. Déverrouiller une copie pour la modifier et la signer ? Votre fichier d’origine reste inchangé.",
   "unlock.action": "Déverrouiller",
-  "unlock.cancel": "Modifier sans déverrouiller",
+  "unlock.cancel": "Pas maintenant",
   "unlock.working": "Déverrouillage…",
   "error.unlockFailed": "Impossible de déverrouiller « {{name}} » — un mot de passe d’ouverture est peut-être requis",
   "stage.prevPage": "Page précédente",

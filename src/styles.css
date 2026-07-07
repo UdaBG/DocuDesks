@@ -175,6 +175,7 @@ select,
 .app {
   display: grid;
   grid-template-rows: 54px 1fr 62px;
+  grid-template-columns: minmax(0, 1fr); /* single column that never exceeds the viewport */
   height: 100vh;
 }
 
@@ -182,6 +183,9 @@ select,
   display: grid;
   grid-template-columns: 258px 1fr 296px;
   min-height: 0;
+  /* let the panels shrink instead of a long file name blowing the grid wider
+     than the viewport (which would stretch the whole app sideways) */
+  min-width: 0;
 }
 
 /* ---------- top bar ---------- */
@@ -403,6 +407,7 @@ select,
   align-items: center;
   border-radius: 8px;
   position: relative;
+  min-width: 0; /* so .doc-main can shrink and the name ellipsises */
 }
 .doc-item:hover {
   background: var(--ink-200);

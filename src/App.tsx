@@ -32,11 +32,12 @@ export default function App() {
   // protected docs the user chose to edit without unlocking — don't re-nag
   const [unlockDeclined, setUnlockDeclined] = useState<string[]>([])
 
-  // Offer to unlock a protected document the moment the user enters Edit on
-  // it — editing/signing a protected file cannot rebuild it otherwise.
+  // Offer to unlock a protected document as soon as it's the active doc in
+  // Edit *or* Sign — a protected file cannot be rebuilt, so both signing and
+  // editing would otherwise fail (sign showed only a cryptic error before).
   const selectedDoc = docs.find((d) => d.id === selectedDocId)
   const promptUnlock =
-    view === 'edit' &&
+    (view === 'edit' || view === 'sign') &&
     !!selectedDoc?.encrypted &&
     !unlockDeclined.includes(selectedDoc.id)
 

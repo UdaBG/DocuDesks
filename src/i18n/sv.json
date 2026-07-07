@@ -190,7 +190,7 @@
   "unlock.title": "Denna PDF är skyddad",
   "unlock.body": "Ett lösenordsskydd hindrar redigering. Lås upp en kopia för att redigera och signera? Din originalfil ändras inte.",
   "unlock.action": "Lås upp",
-  "unlock.cancel": "Redigera utan att låsa upp",
+  "unlock.cancel": "Inte nu",
   "unlock.working": "Låser upp…",
   "error.unlockFailed": "Kunde inte låsa upp ”{{name}}” — den kan kräva ett öppningslösenord",
   "stage.prevPage": "Föregående sida",
