@@ -14,13 +14,17 @@ const PORT = 9259
 const TMP = path.join(os.tmpdir(), 'signer-covercolor')
 await mkdir(TMP, { recursive: true })
 
-// light-blue page (bank-statement style) with black text
+// light-blue page (bank-statement style) with black body text, plus a solid
+// blue header band carrying WHITE text (the table-header case)
 const doc = await PDFDocument.create()
 const page = doc.addPage([595, 842])
 page.drawRectangle({ x: 0, y: 0, width: 595, height: 842, color: rgb(0.86, 0.91, 0.97) }) // #dbe8f7
 const helv = await doc.embedFont(StandardFonts.Helvetica)
 page.drawText('Transaction Fee 360,000.00', { x: 80, y: 700, size: 14, font: helv, color: rgb(0.1, 0.1, 0.1) })
 page.drawText('Balance 1,390,189,345.30', { x: 80, y: 640, size: 14, font: helv, color: rgb(0.1, 0.1, 0.1) })
+// blue header band with white text near the top (y ~ 780pt)
+page.drawRectangle({ x: 0, y: 760, width: 595, height: 44, color: rgb(0.36, 0.61, 0.84) }) // #5b9bd6
+page.drawText('Posting Date', { x: 30, y: 774, size: 15, font: helv, color: rgb(1, 1, 1) })
 const pdfPath = path.join(TMP, 'tinted.pdf')
 await writeFile(pdfPath, await doc.save())
 
@@ -144,7 +148,39 @@ try {
   console.log('whiteout fill on tinted page:', w.fill)
   if (!w.fill || !near(w.fill, 219, 232, 247)) fail(`whiteout fill ${w.fill}, expected ~#dbe8f7`)
 
-  // 3. panel override: the drawn cover is selected; picking a swatch recolors it
+  // 2b. WHITE text on the BLUE header must retype as WHITE (not sampled as
+  // the blue background — the bug where light text vanished on its own colour)
+  await evaluate(`(${E}.setTool('retype'), true)`)
+  await evaluate(`(() => {
+    const el = document.querySelector('.edit-overlay')
+    const r = el.getBoundingClientRect()
+    const ev = (type) => el.dispatchEvent(new PointerEvent(type, {
+      bubbles: true, pointerId: 1, pointerType: 'mouse', pressure: 0.5, buttons: 1,
+      clientX: r.left + ${60 / 595} * r.width, clientY: r.top + ${(842 - 775) / 842} * r.height,
+    }))
+    ev('pointerdown'); ev('pointerup')
+    return true
+  })()`)
+  await waitFor(`${E}.sessions['${docId}'] && ${E}.sessions['${docId}'].editingId`, 'header retype box open')
+  const hdr = await evaluate(`(() => {
+    const s = ${E}.sessions['${docId}']
+    const t = s.objects.find(o => o.id === s.editingId)
+    const cover = [...s.objects].reverse().find(o => o.kind === 'whiteout')
+    return JSON.stringify({ text: t?.text, color: t?.color, cover: cover?.fill })
+  })()`)
+  const h = JSON.parse(hdr)
+  console.log('white-on-blue header retype:', hdr)
+  // ink must be light (near white), NOT the blue background
+  const lum = (hex) => { const v = parseInt(hex.slice(1), 16); return 0.299*((v>>16)&255)+0.587*((v>>8)&255)+0.114*(v&255) }
+  if (!h.color || lum(h.color) < 180) fail(`header text sampled as ${h.color} (dark) — should be near-white`)
+  if (h.cover && lum(h.cover) > 160) fail(`header cover ${h.cover} is too light — should match the blue band`)
+  await evaluate(`(() => { document.querySelector('.eo-textarea')?.blur(); return true })()`)
+  await sleep(300)
+  await evaluate(`(${E}.setTool('whiteout'), true)`)
+
+  // 3. panel override: re-select the step-2 whiteout, then a swatch recolors it
+  await evaluate(`(${E}.select('${docId}', '${w.id}'), true)`)
+  await sleep(200)
   await evaluate(`(document.querySelectorAll('.color-field')[0].querySelectorAll('.swatch')[0].click(), true)`)
   await sleep(300)
   const overridden = await evaluate(`(() => {

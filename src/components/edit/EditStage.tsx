@@ -84,23 +84,45 @@ function dedupeOverlappingPieces(pieces: TextPiece[]): TextPiece[] {
 }
 
 function inkFromPixels(data: Uint8ClampedArray): string | null {
-  // most ink-like pixel first, then average only pixels near that color —
-  // majority votes go grey on antialiased thin text
-  let bestI = -1
-  let bestScore = -1
+  // Ink is the colour that contrasts MOST with the background, not simply the
+  // darkest — so this works for dark-on-light AND light-on-dark (e.g. white
+  // text on a blue table header). Background = channel-wise median, since ink
+  // covers a minority of the region.
+  const rs: number[] = []
+  const gs: number[] = []
+  const bs: number[] = []
   for (let i = 0; i < data.length; i += 4) {
-    const max = Math.max(data[i], data[i + 1], data[i + 2])
-    const min = Math.min(data[i], data[i + 1], data[i + 2])
-    const score = 255 - max + (max - min)
-    if (score > bestScore) {
-      bestScore = score
+    if (data[i + 3] > 200) {
+      rs.push(data[i])
+      gs.push(data[i + 1])
+      bs.push(data[i + 2])
+    }
+  }
+  if (rs.length < 8) return null
+  const med = (a: number[]) => {
+    a.sort((x, y) => x - y)
+    return a[a.length >> 1]
+  }
+  const bgR = med(rs)
+  const bgG = med(gs)
+  const bgB = med(bs)
+  // the pixel furthest from the background is the crispest (full) ink pixel
+  let bestI = -1
+  let bestD = -1
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] <= 200) continue
+    const d = Math.abs(data[i] - bgR) + Math.abs(data[i + 1] - bgG) + Math.abs(data[i + 2] - bgB)
+    if (d > bestD) {
+      bestD = d
       bestI = i
     }
   }
-  if (bestI < 0 || bestScore < 70) return null
+  if (bestI < 0 || bestD < 60) return null // uniform region — no distinct ink
   const br = data[bestI]
   const bg = data[bestI + 1]
   const bb = data[bestI + 2]
+  // average the pixels near that ink colour (the crisp core, not the
+  // antialiased edge pixels that blend toward the background)
   let n = 0
   let r = 0
   let g = 0
@@ -261,48 +283,12 @@ function sampleInkColor(
   const w = Math.min(canvas.width - x, Math.ceil(wRunPt * sx))
   const h = Math.min(canvas.height - y, Math.ceil(hRunPt * sy))
   if (w <= 2 || h <= 2) return null
-  let data: Uint8ClampedArray
   try {
-    data = canvas.getContext('2d')!.getImageData(x, y, w, h).data
+    // same background-relative logic as the hi-res sampler
+    return inkFromPixels(canvas.getContext('2d')!.getImageData(x, y, w, h).data)
   } catch {
     return null
   }
-  // Antialiased grey edge pixels outnumber true ink on thin text, so a
-  // majority vote goes grey. Instead: find the most ink-like pixel (darkest /
-  // most saturated), then average only the pixels close to that color.
-  let bestI = -1
-  let bestScore = -1
-  for (let i = 0; i < data.length; i += 4) {
-    const max = Math.max(data[i], data[i + 1], data[i + 2])
-    const min = Math.min(data[i], data[i + 1], data[i + 2])
-    const score = 255 - max + (max - min)
-    if (score > bestScore) {
-      bestScore = score
-      bestI = i
-    }
-  }
-  if (bestI < 0 || bestScore < 70) return null // nothing ink-like in the region
-  const br = data[bestI]
-  const bg = data[bestI + 1]
-  const bb = data[bestI + 2]
-  let n = 0
-  let r = 0
-  let g = 0
-  let b = 0
-  for (let i = 0; i < data.length; i += 4) {
-    if (
-      Math.abs(data[i] - br) + Math.abs(data[i + 1] - bg) + Math.abs(data[i + 2] - bb) <
-      90
-    ) {
-      n++
-      r += data[i]
-      g += data[i + 1]
-      b += data[i + 2]
-    }
-  }
-  if (n < 4) return null
-  const hex = (v: number) => Math.round(v / n).toString(16).padStart(2, '0')
-  return `#${hex(r)}${hex(g)}${hex(b)}`
 }
 
 type Gesture =
