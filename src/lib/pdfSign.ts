@@ -3,6 +3,7 @@ import type { Placement, SavedSignature } from '../types'
 import { fitStampBox, resolvePageIndex } from '../types'
 import { dataUrlToBytes } from './imageUtils'
 import { flattenAnnotations } from './pdfFlatten'
+import { safeStem } from './fileName'
 
 export interface StampInput {
   signature: SavedSignature
@@ -63,7 +64,5 @@ export function applySignature(
 }
 
 export function signedName(original: string): string {
-  const dot = original.toLowerCase().lastIndexOf('.pdf')
-  const stem = dot > 0 ? original.slice(0, dot) : original
-  return `${stem}_signed.pdf`
+  return `${safeStem(original)}_signed.pdf`
 }

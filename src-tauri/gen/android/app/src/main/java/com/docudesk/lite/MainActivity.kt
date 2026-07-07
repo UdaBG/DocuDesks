@@ -2,7 +2,9 @@ package com.docudesk.lite
 
 import android.content.Intent
 import android.graphics.Color
+import android.net.Uri
 import android.os.Bundle
+import android.provider.OpenableColumns
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
@@ -11,6 +13,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import org.json.JSONArray
+import org.json.JSONObject
 
 class MainActivity : TauriActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,13 +55,19 @@ class MainActivity : TauriActivity() {
   override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
     super.onActivityResult(requestCode, resultCode, data)
     if (resultCode != RESULT_OK || data == null) return
-    val uris = mutableListOf<String>()
-    data.data?.let { uris.add(it.toString()) }
+    val uris = mutableListOf<Uri>()
+    data.data?.let { uris.add(it) }
     data.clipData?.let { clip ->
-      for (i in 0 until clip.itemCount) uris.add(clip.getItemAt(i).uri.toString())
+      for (i in 0 until clip.itemCount) uris.add(clip.getItemAt(i).uri)
     }
     if (uris.isEmpty()) return
-    val json = JSONArray(uris).toString()
+    // Forward {uri, name} so the web app can show the file's real name — the
+    // content URI alone only carries a document id (e.g. "document:1000048777").
+    val arr = JSONArray()
+    for (u in uris) {
+      arr.put(JSONObject().put("uri", u.toString()).put("name", displayName(u)))
+    }
+    val json = arr.toString()
     val root = window.decorView
     var attempts = 0
     // the web app may still be booting (process recreated behind the
@@ -77,6 +86,18 @@ class MainActivity : TauriActivity() {
       }
     }
     root.postDelayed(deliver, 300)
+  }
+
+  /** The file's real display name from its content URI, or "" if unavailable. */
+  private fun displayName(uri: Uri): String {
+    return try {
+      contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+        val idx = c.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+        if (idx >= 0 && c.moveToFirst()) c.getString(idx) ?: "" else ""
+      } ?: ""
+    } catch (e: Exception) {
+      ""
+    }
   }
 
   private fun findWebView(v: View?): WebView? {

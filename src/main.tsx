@@ -14,6 +14,7 @@ import './styles.css'
 import App from './App'
 import { useApp } from './store'
 import { createTauriApi, isTauri, type SaveGuard } from './platform/tauriApi'
+import { displayNameFromPath } from './lib/fileName'
 
 // Under Tauri there is no Electron preload — install the equivalent API.
 if (isTauri()) {
@@ -58,12 +59,25 @@ void import('./lib/ocr').then((m) => {
 // mobile save path (tauriApi.writeSigned) marks a suppression window and the
 // exact saved URI; we skip both here. We still return true so MainActivity
 // stops retrying the delivery.
-;(window as unknown as Record<string, unknown>).__androidPickedFiles = (uris: string[]) => {
+// MainActivity forwards either bare URI strings or {uri, name} objects, where
+// name is the real DISPLAY_NAME it resolved from Android's ContentResolver
+// (the URI alone only yields a meaningless document id).
+type PickedItem = string | { uri: string; name?: string }
+;(window as unknown as Record<string, unknown>).__androidPickedFiles = (items: PickedItem[]) => {
   const guard = window as unknown as SaveGuard
   const saving = Date.now() < (guard.__signerSavingUntil ?? 0)
   void (async () => {
-    for (const uri of uris) {
+    for (const item of items) {
+      const uri = typeof item === 'string' ? item : item?.uri
+      if (!uri) continue
       if (saving || guard.__signerSavedUris?.has(uri)) continue // our own save output — not a pick
+      const realName = (typeof item === 'string' ? '' : (item.name ?? '')).trim()
+      // if the normal open path already added it, just correct the name
+      const existing = useApp.getState().docs.find((d) => d.path === uri)
+      if (existing) {
+        if (realName) useApp.getState().renameByPath(uri, realName)
+        continue
+      }
       try {
         const bytes = new Uint8Array(await window.signer.readFile(uri))
         const isPdf =
@@ -73,9 +87,7 @@ void import('./lib/ocr').then((m) => {
           bytes[2] === 0x44 && // D
           bytes[3] === 0x46 // F
         if (!isPdf) continue
-        const decoded = decodeURIComponent(uri)
-        const name = decoded.split(/[\\/:]/).pop()?.trim() || 'document.pdf'
-        await useApp.getState().addFiles([{ name, bytes, path: uri }])
+        await useApp.getState().addFiles([{ name: realName || displayNameFromPath(uri), bytes, path: uri }])
       } catch {
         /* unreadable or foreign result — not a pick we can use */
       }

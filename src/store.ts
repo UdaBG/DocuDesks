@@ -3,6 +3,7 @@ import i18next, { matchLanguage, type LanguageCode } from './i18n'
 import type { ExtraStamp, Placement, SavedSignature, SigDoc, SignMode } from './types'
 import { effectivePlacement, resolvePageIndex, uid } from './types'
 import { getPageCount, looksEncrypted } from './lib/pdf'
+import { displayNameFromPath } from './lib/fileName'
 import { detectSignatureSpot } from './lib/smartDetect'
 import { applyStamps, signedName, type StampInput } from './lib/pdfSign'
 import { useEdit } from './editor/editStore'
@@ -117,6 +118,7 @@ interface AppState {
   unlockProtectedDoc(id: string): Promise<boolean>
   addFiles(files: IncomingFile[]): Promise<void>
   addFromPaths(paths: string[]): Promise<void>
+  renameByPath(path: string, name: string): void
   openFileDialog(): Promise<void>
   removeDoc(id: string): void
   clearDocs(): void
@@ -344,18 +346,26 @@ export const useApp = create<AppState>((set, get) => ({
     for (const p of paths) {
       try {
         const bytes = await window.signer.readFile(p)
-        files.push({ name: p.replace(/^.*[\\/]/, ''), bytes: new Uint8Array(bytes), path: p })
+        files.push({ name: displayNameFromPath(p), bytes: new Uint8Array(bytes), path: p })
       } catch {
         // tell the user instead of failing silently — the error toast listens
         // for window error events
         window.dispatchEvent(
           new ErrorEvent('error', {
-            message: i18next.t('error.openFailed', { name: p.replace(/^.*[\\/]/, '') }),
+            message: i18next.t('error.openFailed', { name: displayNameFromPath(p) }),
           }),
         )
       }
     }
     if (files.length) await get().addFiles(files)
+  },
+
+  // The pick net (Android) learns a file's real DISPLAY_NAME after the normal
+  // open path has already added it under a URI-derived placeholder — correct it.
+  renameByPath(path, name) {
+    const clean = name.trim()
+    if (!clean) return
+    set((s) => ({ docs: s.docs.map((d) => (d.path === path && d.name !== clean ? { ...d, name: clean } : d)) }))
   },
 
   async openFileDialog() {
