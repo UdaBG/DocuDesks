@@ -387,6 +387,8 @@ export default function EditStage() {
   const ocrJobsRef = useRef(new Map<string, Promise<PageText>>())
   /** click generation — only the newest retype click opens a box */
   const retypeSeqRef = useRef(0)
+  /** text/retype: a clean tap opens a box, a slide pans (see onOverlayPointer*) */
+  const tapRef = useRef<{ xf: number; yf: number; x: number; y: number; moved: boolean } | null>(null)
   const openedRef = useRef<{ key: string; opened: OpenedPdf } | null>(null)
   const [view, setView] = useState<PageView | null>(null)
   /** magnifier loupe while color-sampling: overlay CSS position + source device px */
@@ -491,6 +493,41 @@ export default function EditStage() {
     ocrJobsRef.current.clear()
   }, [ocrOverride])
 
+  // Self-heal touch-gesture state. touchesRef is pruned by capture-phase
+  // handlers on the scroll container, but a pointerup can be lost when the
+  // overlay unmounts (a text box opening) or pointer capture retargets the
+  // event — leaving a stale touch that reads as a phantom second finger
+  // (every move zooms) and blocks the tools. Window listeners never miss the
+  // release, whatever element it lands on.
+  useEffect(() => {
+    const release = (e: PointerEvent) => {
+      touchesRef.current.delete(e.pointerId)
+      if (touchesRef.current.size < 2) pinchRef.current = null
+      if (touchesRef.current.size === 0) {
+        panRef.current = null
+        tapRef.current = null
+      }
+    }
+    window.addEventListener('pointerup', release)
+    window.addEventListener('pointercancel', release)
+    window.addEventListener('lostpointercapture', release)
+    return () => {
+      window.removeEventListener('pointerup', release)
+      window.removeEventListener('pointercancel', release)
+      window.removeEventListener('lostpointercapture', release)
+    }
+  }, [])
+
+  // Changing tools is a deliberate toolbar tap with no finger drawing on the
+  // canvas — reset any half-tracked gesture so a leftover can't corrupt it.
+  useEffect(() => {
+    touchesRef.current.clear()
+    pinchRef.current = null
+    panRef.current = null
+    tapRef.current = null
+    gestureRef.current = null
+  }, [tool])
+
   // announce OCR mode changes in the hint slot — tooltips don't exist on
   // touch screens, so the toolbar toggle needs visible feedback
   const [ocrNotice, setOcrNotice] = useState<string | null>(null)
@@ -537,6 +574,13 @@ export default function EditStage() {
       prevW: prevSpaceW.current,
       hasView: !!view,
       space: { ...space },
+    })
+    // gesture bookkeeping (CDP regressions assert the stuck-pinch self-heal)
+    ;(window as unknown as Record<string, unknown>).__editGestureDebug = () => ({
+      touches: touchesRef.current.size,
+      pinch: !!pinchRef.current,
+      pan: !!panRef.current,
+      tap: !!tapRef.current,
     })
   })
 
@@ -1080,37 +1124,16 @@ export default function EditStage() {
       // text box we are about to create (and blur-delete it) — suppress it.
       e.preventDefault()
       if (session.editingId) {
-        // clicking outside an open text box commits it first
+        // touching outside an open text box commits it first
         finishTextEdit(session.editingId)
         return
       }
-    }
-    if (tool === 'retype') {
-      void retypeAt(xf, yf)
-      return
-    }
-    if (tool === 'text') {
-      pushHistory(doc.id)
-      const obj: TextObj = {
-        id: uid(),
-        pageId: pageRef.id,
-        kind: 'text',
-        x: xf,
-        y: yf,
-        w: clamp(0.32, 0.05, 1 - xf),
-        text: '',
-        fontId: style.fontId,
-        sizePt: style.fontSizePt,
-        color: style.textColor,
-        bold: style.bold,
-        italic: style.italic,
-        underline: style.underline,
-        strike: style.strike,
-        highlight: style.highlight,
-      }
-      addObject(doc.id, obj)
-      select(doc.id, obj.id)
-      setEditing(doc.id, obj.id)
+      // A clean tap opens the box; a slide pans the page instead. Placement is
+      // deferred to pointerup (onOverlayPointerUp) so you can navigate a
+      // zoomed document with a text tool active without dropping a box.
+      const el = scrollRef.current
+      if (el) panRef.current = { x: e.clientX, y: e.clientY, sl: el.scrollLeft, st: el.scrollTop }
+      tapRef.current = { xf, yf, x: e.clientX, y: e.clientY, moved: false }
       return
     }
     if (tool === 'erase') {
@@ -1160,6 +1183,14 @@ export default function EditStage() {
     if (!doc || !view) return
     if (sampling) {
       updateLoupe(e)
+      return
+    }
+    // text/retype: past the movement threshold this is a pan, not a tap — the
+    // scroll container's pan handler does the scrolling; we just record it so
+    // pointerup won't drop a box
+    const tap = tapRef.current
+    if (tap) {
+      if (!tap.moved && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > 8) tap.moved = true
       return
     }
     const g = gestureRef.current
@@ -1222,6 +1253,41 @@ export default function EditStage() {
   }
 
   function onOverlayPointerUp() {
+    // text/retype: resolve the deferred tap. A clean tap opens the box at the
+    // touch-down point; a slide was a pan (handled by the scroll container).
+    const tap = tapRef.current
+    if (tap) {
+      tapRef.current = null
+      panRef.current = null
+      if (!tap.moved && doc && session && pageRef && view) {
+        if (tool === 'retype') {
+          void retypeAt(tap.xf, tap.yf)
+        } else if (tool === 'text') {
+          pushHistory(doc.id)
+          const obj: TextObj = {
+            id: uid(),
+            pageId: pageRef.id,
+            kind: 'text',
+            x: tap.xf,
+            y: tap.yf,
+            w: clamp(0.32, 0.05, 1 - tap.xf),
+            text: '',
+            fontId: style.fontId,
+            sizePt: style.fontSizePt,
+            color: style.textColor,
+            bold: style.bold,
+            italic: style.italic,
+            underline: style.underline,
+            strike: style.strike,
+            highlight: style.highlight,
+          }
+          addObject(doc.id, obj)
+          select(doc.id, obj.id)
+          setEditing(doc.id, obj.id)
+        }
+      }
+      return
+    }
     const g = gestureRef.current
     gestureRef.current = null
     if (!doc) return
@@ -1411,6 +1477,7 @@ export default function EditStage() {
             // second finger: abort any tool gesture, start pinch+pan
             gestureRef.current = null
             panRef.current = null
+            tapRef.current = null
             setDraft(null)
             const [a, b] = [...touchesRef.current.values()]
             pinchRef.current = {
