@@ -136,6 +136,20 @@ try {
   console.log('retype on unlocked doc read:', JSON.stringify(text))
   if (!/account|balance|1,390/i.test(text ?? '')) fail(`retype text unexpected: "${text}"`)
 
+  // a SECOND protected file in the same session must also unlock — proves the
+  // qpdf factory mints more than one working instance (fresh wasm per unlock)
+  await evaluate(`(() => { document.querySelector('.eo-textarea')?.blur(); return true })()`)
+  await evaluate(`(async () => {
+    const bytes = await window.signer.readFile(${JSON.stringify(protectedPath.replace(/\\/g, '\\\\'))})
+    await window.__signerStore.getState().addFiles([{ name: 'second-protected.pdf', bytes: new Uint8Array(bytes) }])
+  })()`)
+  await waitFor(`${S}.docs.length === 2 && ${S}.docs[1].encrypted === true`, 'second protected added')
+  await evaluate(`(${S}.selectDoc(${S}.docs[1].id), ${S}.setView('edit'), true)`)
+  await waitFor(`!!document.querySelector('.confirm-dialog')`, 'unlock dialog for second doc')
+  await domClick('.confirm-dialog .btn-primary')
+  await waitFor(`${S}.docs[1].encrypted === false`, 'second doc unlocked', 40000)
+  console.log('second protected doc unlocked in same session')
+
   console.log(process.exitCode ? 'DONE WITH FAILURES' : 'ALL CHECKS PASSED')
 } catch (e) {
   console.error('ERROR:', e.message)
