@@ -78,7 +78,7 @@ try {
   // A. an ugly source name saves as a clean, legal .pdf
   await evaluate(`(async () => {
     const bytes = new Uint8Array(await window.signer.readFile(${JSON.stringify(realA)}))
-    await ${S}.addFiles([{ name: 'weird%3Aname *?.pdf', bytes }])
+    await ${S}.addFiles([{ name: 'weird:name *?.pdf', bytes }])
     const c = document.createElement('canvas'); c.width = 300; c.height = 100
     const g = c.getContext('2d'); g.strokeStyle = '#26357c'; g.lineWidth = 6
     g.beginPath(); g.moveTo(10, 80); g.lineTo(280, 20); g.stroke()

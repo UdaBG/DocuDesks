@@ -708,8 +708,17 @@ export const useApp = create<AppState>((set, get) => ({
     set({ signing: { done: 0, total: targets.length } })
     try {
       for (const doc of targets) {
-        const bytes = await finalizedBytesFor(doc)
-        await window.signer.printPdfData(signedName(doc.name), bytes)
+        try {
+          const bytes = await finalizedBytesFor(doc)
+          await window.signer.printPdfData(signedName(doc.name), bytes)
+        } catch (e) {
+          // one bad doc (e.g. a protected file) must not abort the whole batch
+          window.dispatchEvent(
+            new ErrorEvent('error', {
+              message: doc.encrypted ? i18next.t('error.protectedEdit') : String((e as Error)?.message ?? e),
+            }),
+          )
+        }
         set((s) => ({ signing: s.signing && { ...s.signing, done: s.signing.done + 1 } }))
         await new Promise((r) => setTimeout(r, 0))
       }

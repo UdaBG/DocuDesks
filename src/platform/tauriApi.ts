@@ -100,22 +100,23 @@ export function createTauriApi(): SignerApi {
         // colliding default they'd tap straight through
         const used = saveNameCounts.get(name) ?? 0
         const suggested = used === 0 ? name : `${name.replace(/\.pdf$/i, '')} (${used + 1}).pdf`
-        w.__signerSavingUntil = Date.now() + 8000
-        try {
-          const target = await save({
-            defaultPath: suggested,
-            filters: [{ name: 'PDF documents', extensions: ['pdf'] }],
-          })
-          if (!target) return ''
-          saveNameCounts.set(name, used + 1)
-          ;(w.__signerSavedUris ??= new Set<string>()).add(target)
-          await writeFile(target, data)
-          w.__signerSavingUntil = Date.now() + 8000 // keep it suppressed past the write, too
-          return target
-        } catch (e) {
-          w.__signerSavingUntil = Date.now() + 2000
-          throw e
-        }
+        const target = await save({
+          defaultPath: suggested,
+          filters: [{ name: 'PDF documents', extensions: ['pdf'] }],
+        })
+        if (!target) return '' // cancelled — nothing saved, so nothing to suppress
+        saveNameCounts.set(name, used + 1)
+        // Record the URI and open a short suppression window *now* — the dialog
+        // has closed, so its activity result is forwarded (~300ms later) and
+        // must not be re-imported as a new document. Setting it here (not when
+        // the dialog opened) means a cancelled or slow save never blocks a
+        // genuine open. writeFile can still throw; the recorded URI guards the
+        // created-but-unwritten file regardless.
+        ;(w.__signerSavedUris ??= new Set<string>()).add(target)
+        w.__signerSavingUntil = Date.now() + 5000
+        await writeFile(target, data)
+        w.__signerSavingUntil = Date.now() + 5000 // refresh past the write
+        return target
       }
       const dot = name.lastIndexOf('.')
       const stem = dot > 0 ? name.slice(0, dot) : name
