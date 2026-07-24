@@ -79,6 +79,24 @@ try {
   await waitFor(`!document.querySelector('.modal.licenses')`, 'modal closes')
   console.log('modal closes on veil click')
 
+  // phone: the top-bar button is hidden (no room at 360dp) and the Documents
+  // panel head carries it instead
+  await send('Emulation.setDeviceMetricsOverride', { width: 360, height: 800, deviceScaleFactor: 2, mobile: true })
+  await sleep(600)
+  const mobile = await evaluate(`(() => {
+    const top = document.querySelector('.topbar-info')
+    const hidden = !top || getComputedStyle(top).display === 'none'
+    const inDocs = !!document.querySelector('.docs-panel .panel-head .icon-btn')
+    return JSON.stringify({ hidden, inDocs })
+  })()`)
+  console.log('mobile placement:', mobile)
+  const m = JSON.parse(mobile)
+  if (!m.hidden) fail('top-bar licenses button should hide at 360dp')
+  if (!m.inDocs) fail('licenses button missing from the Documents panel head on mobile')
+  await evaluate(`(document.querySelector('.docs-panel .panel-head .icon-btn').click(), true)`)
+  await waitFor(`!!document.querySelector('.modal.licenses')`, 'licenses modal opens on mobile')
+  console.log('licenses modal opens from the Documents panel on mobile')
+
   console.log(process.exitCode ? 'DONE WITH FAILURES' : 'ALL CHECKS PASSED')
 } catch (e) {
   console.error('ERROR:', e.message)

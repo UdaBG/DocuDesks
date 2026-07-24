@@ -3,7 +3,16 @@ import { useTranslation } from 'react-i18next'
 import { useApp } from '../../store'
 import { useEdit } from '../../editor/editStore'
 import type { EditObj, LineObj, TextObj, ToolId, Watermark } from '../../editor/types'
-import { dashPattern, TEXT_BASELINE, TEXT_LINE_HEIGHT, textStyleFingerprint } from '../../editor/types'
+import {
+  dashPattern,
+  rotOf,
+  rotationPivotPt,
+  rotatePointScreen,
+  TEXT_BASELINE,
+  TEXT_LINE_HEIGHT,
+  textNominalHeightPt,
+  textStyleFingerprint,
+} from '../../editor/types'
 import { uid } from '../../types'
 import type { PDFPageProxy } from 'pdfjs-dist'
 import { openPdf, renderPage, type OpenedPdf } from '../../lib/pdf'
@@ -41,13 +50,47 @@ interface PageView {
 
 interface TextPiece {
   str: string
+  /** baseline start point in PDF points (y up from the page bottom) */
   x: number
   y: number
+  /** advance length along the reading direction */
   w: number
+  /** font size */
   h: number
   fontName?: string
   /** piece came from OCR (no font info; covers must match the scan's paper) */
   ocr?: boolean
+  /**
+   * text direction in PDF space (ccw-positive): 0 = horizontal, 90 = reads up
+   * the page, -90 = reads down, 180 = upside-down. Snapped; absent = 0.
+   */
+  angleDeg?: number
+}
+
+/** Axis-aligned bounds of a piece in PDF points (x/y = bottom-left corner). */
+function pieceBBox(p: TextPiece): { x: number; y: number; w: number; h: number } {
+  switch (p.angleDeg ?? 0) {
+    case 90: // reads up the page; glyph tops point left of the baseline
+      return { x: p.x - p.h, y: p.y, w: p.h, h: p.w }
+    case -90: // reads down the page; glyph tops point right
+      return { x: p.x, y: p.y - p.w, w: p.h, h: p.w }
+    case 180: // upside-down
+      return { x: p.x - p.w, y: p.y - p.h, w: p.w, h: p.h }
+    default:
+      return { x: p.x, y: p.y, w: p.w, h: p.h }
+  }
+}
+
+/** Overlap of two axis-aligned boxes on both axes (fractions of the smaller). */
+function bboxesOverlap(
+  a: { x: number; y: number; w: number; h: number },
+  b: { x: number; y: number; w: number; h: number },
+  fx: number,
+  fy: number,
+): boolean {
+  const ix = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)
+  const iy = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y)
+  return ix > Math.min(a.w, b.w) * fx && iy > Math.min(a.h, b.h) * fy
 }
 
 interface PageText {
@@ -57,10 +100,11 @@ interface PageText {
 }
 
 /** Do two pieces occupy the same spot? (used to merge OCR under real text) */
-function piecesOverlap(
-  a: { x: number; y: number; w: number; h: number },
-  b: { x: number; y: number; w: number; h: number },
-): boolean {
+function piecesOverlap(a: TextPiece, b: TextPiece): boolean {
+  if (a.angleDeg || b.angleDeg) {
+    // rotated text: compare true footprints (OCR pieces are always horizontal)
+    return bboxesOverlap(pieceBBox(a), pieceBBox(b), 0.3, 0.3)
+  }
   const ix = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)
   if (ix <= Math.min(a.w, b.w) * 0.3) return false
   return Math.abs(a.y - b.y) < Math.max(a.h, b.h) * 0.8
@@ -76,6 +120,11 @@ function dedupeOverlappingPieces(pieces: TextPiece[]): TextPiece[] {
   for (const p of pieces) {
     for (let i = out.length - 1; i >= 0; i--) {
       const q = out[i]
+      if (p.angleDeg || q.angleDeg) {
+        // a saved vertical retype hides the old vertical run the same way
+        if (bboxesOverlap(pieceBBox(p), pieceBBox(q), 0.5, 0.5)) out.splice(i, 1)
+        continue
+      }
       const sameLine = Math.abs(q.y - p.y) < Math.max(q.h, p.h) * 0.45
       const overlap = Math.min(q.x + q.w, p.x + p.w) - Math.max(q.x, p.x)
       if (sameLine && overlap > 0.5 * Math.min(q.w, p.w)) out.splice(i, 1)
@@ -150,15 +199,13 @@ function inkFromPixels(data: Uint8ClampedArray): string | null {
 async function sampleRunColorHiRes(
   page: PDFPageProxy,
   xPt: number,
-  baselineY: number,
-  wPt: number,
-  fs: number,
+  topPt: number,
+  wRegionPt: number,
+  hRegionPt: number,
 ): Promise<string | null> {
   const SCALE = 4
-  const w = Math.max(8, Math.min(Math.ceil(wPt * SCALE), 2400))
-  const h = Math.max(8, Math.ceil(fs * 1.1 * SCALE))
-  const baseH = page.getViewport({ scale: 1 }).height
-  const topPt = baseH - baselineY - fs * 0.85
+  const w = Math.max(8, Math.min(Math.ceil(wRegionPt * SCALE), 2400))
+  const h = Math.max(8, Math.min(Math.ceil(hRegionPt * SCALE), 2400))
   const viewport = page.getViewport({ scale: SCALE, offsetX: -xPt * SCALE, offsetY: -topPt * SCALE })
   const canvas = document.createElement('canvas')
   canvas.width = w
@@ -299,6 +346,7 @@ type Gesture =
   | { kind: 'move'; objId: string; startX: number; startY: number; orig: EditObj }
   | { kind: 'resize'; objId: string; startX: number; startY: number; orig: EditObj }
   | { kind: 'endpoint'; objId: string; which: 1 | 2 }
+  | { kind: 'rotate'; objId: string; cx: number; cy: number }
 
 function bboxOf(o: EditObj, hPt: number): { x: number; y: number; w: number; h: number } {
   switch (o.kind) {
@@ -324,6 +372,25 @@ function bboxOf(o: EditObj, hPt: number): { x: number; y: number; w: number; h: 
     default:
       return { x: o.x, y: o.y, w: o.w, h: o.h }
   }
+}
+
+/**
+ * Map a page-fraction point into an object's unrotated frame, so plain
+ * point-in-bbox tests keep working on rotated objects. Rotation happens in
+ * pt space (fractions have unequal axis scales, which would skew the angle).
+ */
+function unrotatedPoint(
+  o: EditObj,
+  xf: number,
+  yf: number,
+  wPt: number,
+  hPt: number,
+): [number, number] {
+  const rot = rotOf(o)
+  if (!rot) return [xf, yf]
+  const piv = rotationPivotPt(o, wPt, hPt)
+  const p = rotatePointScreen(xf * wPt, yf * hPt, piv.x, piv.y, -rot)
+  return [p.x / wPt, p.y / hPt]
 }
 
 function translated(o: EditObj, dx: number, dy: number): Partial<EditObj> {
@@ -877,6 +944,12 @@ export default function EditStage() {
       for (const item of tc.items) {
         if (!('str' in item) || !item.str.trim()) continue
         const tr = item.transform
+        // text direction from the transform matrix; pdf.js keeps width = the
+        // advance along the reading direction and height = the font size for
+        // rotated runs too (e.g. vertical table headers: [0, s, -s, 0, x, y])
+        const raw = (Math.atan2(tr[1], tr[0]) * 180) / Math.PI
+        const snapped = [0, 90, -90, 180, -180].find((a) => Math.abs(raw - a) < 8)
+        const angleDeg = snapped === -180 ? 180 : (snapped ?? 0)
         pieces.push({
           str: item.str,
           x: tr[4],
@@ -884,6 +957,7 @@ export default function EditStage() {
           w: item.width,
           h: item.height || Math.hypot(tr[2], tr[3]),
           fontName: item.fontName,
+          ...(angleDeg ? { angleDeg } : {}),
         })
       }
       const families: Record<string, string | undefined> = {}
@@ -921,13 +995,15 @@ export default function EditStage() {
     if (!doc || !session || !pageRef || !view || pageRef.src.type !== 'orig' || !openedRef.current) return
 
     // Clicking an area that already has a session text object edits that
-    // object — never stack a second cover+text pair on top of it.
+    // object — never stack a second cover+text pair on top of it. Rotated
+    // boxes are tested in their own frame (the tap is un-rotated first).
     const existing = [...session.objects]
       .reverse()
       .find((o): o is TextObj => {
         if (o.kind !== 'text' || o.pageId !== pageRef.id) return false
+        const [px, py] = unrotatedPoint(o, xf, yf, view.wPt, view.hPt)
         const bb = bboxOf(o, view.hPt)
-        return xf >= bb.x - 0.005 && xf <= bb.x + bb.w + 0.005 && yf >= bb.y - 0.005 && yf <= bb.y + bb.h + 0.005
+        return px >= bb.x - 0.005 && px <= bb.x + bb.w + 0.005 && py >= bb.y - 0.005 && py <= bb.y + bb.h + 0.005
       })
     if (existing) {
       pushHistory(doc.id)
@@ -953,44 +1029,70 @@ export default function EditStage() {
     const xPt = xf * wPt
     const yPtFromBottom = (1 - yf) * hPt
     let best: TextPiece | null = null
+    let bestArea = Infinity
     for (const p of cached.pieces) {
+      const bb = pieceBBox(p)
       const pad = 2
       if (
-        xPt >= p.x - pad && xPt <= p.x + p.w + pad &&
-        yPtFromBottom >= p.y - pad && yPtFromBottom <= p.y + p.h + pad &&
-        (!best || p.w * p.h < best.w * best.h)
+        xPt >= bb.x - pad && xPt <= bb.x + bb.w + pad &&
+        yPtFromBottom >= bb.y - pad && yPtFromBottom <= bb.y + bb.h + pad &&
+        bb.w * bb.h < bestArea
       ) {
         best = p
+        bestArea = bb.w * bb.h
       }
     }
     if (!best) return
 
+    // Reading frame: u runs along the text direction, v toward the ascenders.
+    // Horizontal text keeps u = x, v = y — the math below is then identical to
+    // the old horizontal-only version. Vertical table headers rotate the frame.
+    const angle = best.angleDeg ?? 0
+    const R: [number, number] = angle === 90 ? [0, 1] : angle === -90 ? [0, -1] : angle === 180 ? [-1, 0] : [1, 0]
+    const U: [number, number] = angle === 90 ? [-1, 0] : angle === -90 ? [1, 0] : angle === 180 ? [0, -1] : [0, 1]
+    const uOf = (p: { x: number; y: number }) => p.x * R[0] + p.y * R[1]
+    const vOf = (p: { x: number; y: number }) => p.x * U[0] + p.y * U[1]
+    /** axis-aligned PDF rect (bottom-left origin) of a box given in (u, v) */
+    const uvRect = (u0: number, u1: number, v0: number, v1: number) => {
+      const xA = u0 * R[0] + v0 * U[0]
+      const xB = u1 * R[0] + v1 * U[0]
+      const yA = u0 * R[1] + v0 * U[1]
+      const yB = u1 * R[1] + v1 * U[1]
+      return { x: Math.min(xA, xB), y: Math.min(yA, yB), w: Math.abs(xB - xA), h: Math.abs(yB - yA) }
+    }
+
     // Join fragments on the same baseline into one visual run, so the whole
     // label is edited, not the fragment pdf.js happened to split at.
     const fs = best.h
+    const bestV = vOf(best)
     const sameLine = cached.pieces
-      .filter((p) => Math.abs(p.y - best!.y) < fs * 0.35 && Math.abs(p.h - fs) < fs * 0.5)
-      .sort((a, b) => a.x - b.x)
+      .filter(
+        (p) =>
+          (p.angleDeg ?? 0) === angle &&
+          Math.abs(vOf(p) - bestV) < fs * 0.35 &&
+          Math.abs(p.h - fs) < fs * 0.5,
+      )
+      .sort((a, b) => uOf(a) - uOf(b))
     const run: TextPiece[] = [best]
     const at = sameLine.indexOf(best)
     for (let i = at - 1; i >= 0; i--) {
-      if (run[0].x - (sameLine[i].x + sameLine[i].w) < fs * 0.6) run.unshift(sameLine[i])
+      if (uOf(run[0]) - (uOf(sameLine[i]) + sameLine[i].w) < fs * 0.6) run.unshift(sameLine[i])
       else break
     }
     for (let i = at + 1; i < sameLine.length; i++) {
-      if (sameLine[i].x - (run[run.length - 1].x + run[run.length - 1].w) < fs * 0.6) run.push(sameLine[i])
+      if (uOf(sameLine[i]) - (uOf(run[run.length - 1]) + run[run.length - 1].w) < fs * 0.6) run.push(sameLine[i])
       else break
     }
     let text = ''
     for (let i = 0; i < run.length; i++) {
       if (i > 0) {
-        const gap = run[i].x - (run[i - 1].x + run[i - 1].w)
+        const gap = uOf(run[i]) - (uOf(run[i - 1]) + run[i - 1].w)
         if (gap > fs * 0.13 && !text.endsWith(' ') && !run[i].str.startsWith(' ')) text += ' '
       }
       text += run[i].str
     }
-    const runX = run[0].x
-    const runW = run[run.length - 1].x + run[run.length - 1].w - runX
+    const runU = uOf(run[0])
+    const runLen = uOf(run[run.length - 1]) + run[run.length - 1].w - runU
 
     // Match the original face: exact family from the embedded font name when
     // possible, otherwise the generic class pdf.js inferred.
@@ -1004,24 +1106,31 @@ export default function EditStage() {
     const match = matchFontFromPdf(pdfFontName, best.fontName ? cached.families[best.fontName] : undefined)
 
     const sizePt = clamp(Math.round(fs * 2) / 2, 5, 120)
-    const baselineTopFrac = 1 - best.y / hPt
 
     // The cover must not clip neighbouring lines in tightly-leaded text:
     // clamp its edges to the descender bottom of the line above and the
-    // ascender top of the line below.
+    // ascender top of the line below (for vertical runs those neighbours are
+    // the adjacent columns).
     const overlapsRun = (p: TextPiece) =>
-      Math.min(p.x + p.w, runX + runW) - Math.max(p.x, runX) > Math.min(p.w, runW) * 0.3
+      Math.min(uOf(p) + p.w, runU + runLen) - Math.max(uOf(p), runU) > Math.min(p.w, runLen) * 0.3
     const lineAbove = cached.pieces
-      .filter((p) => p.y > best!.y + fs * 0.5 && overlapsRun(p))
-      .sort((a, b) => a.y - b.y)[0]
+      .filter((p) => (p.angleDeg ?? 0) === angle && vOf(p) > bestV + fs * 0.5 && overlapsRun(p))
+      .sort((a, b) => vOf(a) - vOf(b))[0]
     const lineBelow = cached.pieces
-      .filter((p) => p.y < best!.y - fs * 0.5 && overlapsRun(p))
-      .sort((a, b) => b.y - a.y)[0]
-    let coverTopY = best.y + fs * 0.98
-    if (lineAbove) coverTopY = Math.min(coverTopY, lineAbove.y - lineAbove.h * 0.3 - 1)
-    let coverBotY = best.y - fs * 0.34
-    if (lineBelow) coverBotY = Math.max(coverBotY, lineBelow.y + lineBelow.h * 0.92 + 1)
-    if (coverTopY - coverBotY < fs * 0.9) coverTopY = coverBotY + fs * 0.95
+      .filter((p) => (p.angleDeg ?? 0) === angle && vOf(p) < bestV - fs * 0.5 && overlapsRun(p))
+      .sort((a, b) => vOf(b) - vOf(a))[0]
+    let coverVTop = bestV + fs * 0.98
+    if (lineAbove) coverVTop = Math.min(coverVTop, vOf(lineAbove) - lineAbove.h * 0.3 - 1)
+    let coverVBot = bestV - fs * 0.34
+    if (lineBelow) coverVBot = Math.max(coverVBot, vOf(lineBelow) + lineBelow.h * 0.92 + 1)
+    if (coverVTop - coverVBot < fs * 0.9) coverVTop = coverVBot + fs * 0.95
+
+    // sampling regions, as axis-aligned page rects (identical numbers to the
+    // old horizontal-only code when angle = 0)
+    const inkRect = uvRect(runU, runU + runLen, bestV - fs * 0.2, bestV + fs * 0.85)
+    const inkHiRect = uvRect(runU, runU + runLen, bestV - fs * 0.25, bestV + fs * 0.85)
+    const paperRect = uvRect(runU, runU + runLen, coverVBot, coverVTop)
+    const coverRect = uvRect(runU - 1.5, runU + runLen + 2.5, coverVBot, coverVTop)
 
     // Keep the original ink color. Scans sample the on-screen canvas (the
     // raster IS the source; a hi-res region re-render of a big scan image is
@@ -1029,16 +1138,22 @@ export default function EditStage() {
     let sampled: string | null = null
     if (best.ocr) {
       if (view.canvas) {
-        sampled = sampleInkColor(view.canvas, runX, hPt - best.y - fs * 0.85, runW, fs * 1.05, wPt, hPt)
+        sampled = sampleInkColor(view.canvas, inkRect.x, hPt - (inkRect.y + inkRect.h), inkRect.w, inkRect.h, wPt, hPt)
       }
     } else {
       try {
-        sampled = await sampleRunColorHiRes(await proxyDoc.getPage(pageIndex + 1), runX, best.y, runW, fs)
+        sampled = await sampleRunColorHiRes(
+          await proxyDoc.getPage(pageIndex + 1),
+          inkHiRect.x,
+          hPt - (inkHiRect.y + inkHiRect.h),
+          inkHiRect.w,
+          inkHiRect.h,
+        )
       } catch {
         sampled = null
       }
       if (!sampled && view.canvas) {
-        sampled = sampleInkColor(view.canvas, runX, hPt - best.y - fs * 0.85, runW, fs * 1.05, wPt, hPt)
+        sampled = sampleInkColor(view.canvas, inkRect.x, hPt - (inkRect.y + inkRect.h), inkRect.w, inkRect.h, wPt, hPt)
       }
       if (seq !== retypeSeqRef.current) return
     }
@@ -1046,18 +1161,49 @@ export default function EditStage() {
     // covers must match the paper behind the text — white pages sample as
     // white, but tinted table cells, scans and dark themes get their tone
     const paper = view.canvas
-      ? samplePaperColor(view.canvas, runX, hPt - coverTopY, runW, coverTopY - coverBotY, wPt, hPt)
+      ? samplePaperColor(view.canvas, paperRect.x, hPt - (paperRect.y + paperRect.h), paperRect.w, paperRect.h, wPt, hPt)
       : null
+
+    // Box geometry. The box itself is stored unrotated (its own frame) with a
+    // rot that spins it about its nominal centre; solve the top-left so that
+    // the ROTATED first-line baseline start lands exactly on the run's
+    // baseline start. For angle 0 this reduces to the old arithmetic.
+    const rot = -angle // pdf ccw -> screen cw
+    const along = Math.max(runLen + 80, runLen * 1.5)
+    // room from the run's start to the page edge, along the reading direction
+    const start = {
+      x: R[0] * runU + U[0] * bestV,
+      y: R[1] * runU + U[1] * bestV,
+    }
+    const distToEdge =
+      R[0] > 0 ? wPt - start.x : R[0] < 0 ? start.x : R[1] > 0 ? hPt - start.y : start.y
+    const wFrac =
+      angle === 0
+        ? clamp(Math.max((runLen + 80) / wPt, (runLen / wPt) * 1.5), 0.05, 1 - runU / wPt - 0.02)
+        : clamp(Math.min(along, Math.max(distToEdge - 4, runLen + 8)) / wPt, 0.02, 1.5)
+    const W = wFrac * wPt
+    const hNom = TEXT_LINE_HEIGHT * sizePt
+    // baseline start relative to the pivot in the box's own (unrotated) frame
+    const kx = -W / 2
+    const ky = TEXT_BASELINE * sizePt - hNom / 2
+    const rad = (rot * Math.PI) / 180
+    const tScreen = { x: start.x, y: hPt - start.y }
+    const pivot = {
+      x: tScreen.x - (kx * Math.cos(rad) - ky * Math.sin(rad)),
+      y: tScreen.y - (kx * Math.sin(rad) + ky * Math.cos(rad)),
+    }
+    const x0 = pivot.x - W / 2
+    const y0 = pivot.y - hNom / 2
 
     pushHistory(doc.id)
     const cover = {
       id: uid(),
       pageId: pageRef.id,
       kind: 'whiteout' as const,
-      x: clamp((runX - 1.5) / wPt, 0, 1),
-      y: clamp(1 - coverTopY / hPt, 0, 1),
-      w: clamp((runW + 4) / wPt, 0, 1),
-      h: clamp((coverTopY - coverBotY) / hPt, 0, 1),
+      x: clamp(coverRect.x / wPt, 0, 1),
+      y: clamp(1 - (coverRect.y + coverRect.h) / hPt, 0, 1),
+      w: clamp(coverRect.w / wPt, 0, 1),
+      h: clamp(coverRect.h / hPt, 0, 1),
       fill: paper ?? style.whiteoutFill,
     }
     const coverId = cover.id
@@ -1065,9 +1211,11 @@ export default function EditStage() {
       id: uid(),
       pageId: pageRef.id,
       kind: 'text',
-      x: runX / wPt,
-      y: clamp(baselineTopFrac - (TEXT_BASELINE * sizePt) / hPt, 0, 1),
-      w: clamp(Math.max((runW + 80) / wPt, (runW / wPt) * 1.5), 0.05, 1 - runX / wPt - 0.02),
+      // a rotated box's unrotated footprint may legitimately start off-page —
+      // clamping it to the page would drag the rotated text off its target
+      x: rot ? clamp(x0 / wPt, -1, 1.5) : clamp(x0 / wPt, 0, 1),
+      y: rot ? clamp(y0 / hPt, -1, 1.5) : clamp(y0 / hPt, 0, 1),
+      w: wFrac,
       text,
       fontId: match.fontId,
       sizePt,
@@ -1078,6 +1226,7 @@ export default function EditStage() {
       strike: false,
       highlight: null,
       weightHint: match.weightHint,
+      ...(rot ? { rot } : {}),
     }
     textObj.retypeOf = {
       coverId,
@@ -1100,7 +1249,8 @@ export default function EditStage() {
     for (const o of session.objects) {
       if (o.pageId !== view.pageId) continue
       const bb = bboxOf(o, view.hPt)
-      if (xf >= bb.x - padX && xf <= bb.x + bb.w + padX && yf >= bb.y - padY && yf <= bb.y + bb.h + padY) {
+      const [pxf, pyf] = unrotatedPoint(o, xf, yf, view.wPt, view.hPt)
+      if (pxf >= bb.x - padX && pxf <= bb.x + bb.w + padX && pyf >= bb.y - padY && pyf <= bb.y + bb.h + padY) {
         if (g?.kind === 'erase' && !g.pushed) {
           pushHistory(doc.id)
           g.pushed = true
@@ -1226,17 +1376,36 @@ export default function EditStage() {
       updateObject(doc.id, g.objId, translated(g.orig, dx, dy))
       return
     }
+    if (g?.kind === 'rotate') {
+      // the handle sits above the centre, so straight up = 0°; snap like the
+      // sign-mode stamps do
+      let rot = (Math.atan2(e.clientY - g.cy, e.clientX - g.cx) * 180) / Math.PI + 90
+      if (rot > 180) rot -= 360
+      const snap = Math.round(rot / 45) * 45
+      if (Math.abs(rot - snap) < 5) rot = snap
+      rot = Math.round(rot * 10) / 10
+      updateObject(doc.id, g.objId, { rot: rot === 0 ? undefined : rot } as Partial<EditObj>)
+      return
+    }
     if (g?.kind === 'resize') {
       const o = g.orig
-      const dx = (e.clientX - g.startX) / ps / view.W
-      const dy = (e.clientY - g.startY) / ps / view.H
+      let dx = (e.clientX - g.startX) / ps / view.W
+      let dy = (e.clientY - g.startY) / ps / view.H
+      // a rotated box resizes along its own axes: read the pointer delta in
+      // the box's frame (undo the rotation in px space, then back to fracs)
+      const rot = rotOf(o)
+      if (rot) {
+        const local = rotatePointScreen(dx * view.W, dy * view.H, 0, 0, -rot)
+        dx = local.x / view.W
+        dy = local.y / view.H
+      }
       if (o.kind === 'rect' || o.kind === 'ellipse' || o.kind === 'whiteout') {
         updateObject(doc.id, g.objId, {
-          w: clamp(o.w + dx, 0.01, 1 - o.x),
-          h: clamp(o.h + dy, 0.01, 1 - o.y),
+          w: clamp(o.w + dx, 0.01, rot ? 1 : 1 - o.x),
+          h: clamp(o.h + dy, 0.01, rot ? 1 : 1 - o.y),
         })
       } else if (o.kind === 'text') {
-        updateObject(doc.id, g.objId, { w: clamp(o.w + dx, 0.05, 1 - o.x) })
+        updateObject(doc.id, g.objId, { w: clamp(o.w + dx, 0.05, rot ? 1 : 1 - o.x) })
       } else if (o.kind === 'ink') {
         const bb = bboxOf(o, view.hPt)
         const sx = clamp((bb.w + dx) / bb.w, 0.15, 8)
@@ -1363,6 +1532,23 @@ export default function EditStage() {
     gestureRef.current = { kind: 'endpoint', objId: o.id, which }
   }
 
+  function beginRotate(e: React.PointerEvent, o: EditObj) {
+    if (!doc || !view) return
+    e.stopPropagation()
+    try { overlayRef.current!.setPointerCapture(e.pointerId) } catch { /* synthetic or stale pointer */ }
+    pushHistory(doc.id)
+    // pivot in client coords: the overlay rect already reflects zoom and any
+    // mid-pinch CSS scale, so fractions map straight through it
+    const rect = overlayRef.current!.getBoundingClientRect()
+    const piv = rotationPivotPt(o, view.wPt, view.hPt)
+    gestureRef.current = {
+      kind: 'rotate',
+      objId: o.id,
+      cx: rect.left + (piv.x / view.wPt) * rect.width,
+      cy: rect.top + (piv.y / view.hPt) * rect.height,
+    }
+  }
+
   // ---------------------------------------------------------------- render
 
   if (!doc || doc.status === 'error') {
@@ -1388,24 +1574,28 @@ export default function EditStage() {
     const py = (f: number) => f * view.H
     const sw = (pt: number) => pt * scale
     const hit = tool === 'select' ? { className: 'eo-hit', onPointerDown: (e: React.PointerEvent) => beginMove(e, o), style: { cursor: 'move' } } : {}
+    // SVG rotate() is clockwise-positive in screen coordinates — the same
+    // convention the export mirrors with degrees(-rot) in PDF space
+    const boxSpin = (b: { x: number; y: number; w: number; h: number; rot?: number }) =>
+      b.rot ? `rotate(${b.rot} ${px(b.x + b.w / 2)} ${py(b.y + b.h / 2)})` : undefined
     switch (o.kind) {
       case 'whiteout':
         return (
-          <g key={o.id} {...hit}>
+          <g key={o.id} {...hit} transform={boxSpin(o)}>
             <rect x={px(o.x)} y={py(o.y)} width={px(o.w)} height={py(o.h)} fill={o.fill} />
             <rect x={px(o.x)} y={py(o.y)} width={px(o.w)} height={py(o.h)} fill="none" stroke="#c9cfdd" strokeDasharray="4 3" strokeWidth={1} />
           </g>
         )
       case 'rect':
         return (
-          <rect key={o.id} {...hit} x={px(o.x)} y={py(o.y)} width={px(o.w)} height={py(o.h)}
+          <rect key={o.id} {...hit} x={px(o.x)} y={py(o.y)} width={px(o.w)} height={py(o.h)} transform={boxSpin(o)}
             fill={o.fill ?? 'none'} fillOpacity={o.opacity} stroke={o.stroke} strokeOpacity={o.opacity} strokeWidth={sw(o.strokeWidthPt)}
             strokeDasharray={dashPattern(o.dash, sw(o.strokeWidthPt))?.join(' ')}
             strokeLinecap={o.dash === 'dotted' ? 'round' : undefined} />
         )
       case 'ellipse':
         return (
-          <ellipse key={o.id} {...hit} cx={px(o.x + o.w / 2)} cy={py(o.y + o.h / 2)} rx={px(o.w / 2)} ry={py(o.h / 2)}
+          <ellipse key={o.id} {...hit} cx={px(o.x + o.w / 2)} cy={py(o.y + o.h / 2)} rx={px(o.w / 2)} ry={py(o.h / 2)} transform={boxSpin(o)}
             fill={o.fill ?? 'none'} fillOpacity={o.opacity} stroke={o.stroke} strokeOpacity={o.opacity} strokeWidth={sw(o.strokeWidthPt)}
             strokeDasharray={dashPattern(o.dash, sw(o.strokeWidthPt))?.join(' ')}
             strokeLinecap={o.dash === 'dotted' ? 'round' : undefined} />
@@ -1610,6 +1800,14 @@ export default function EditStage() {
                     .join(' ') || undefined,
                 lineHeight: TEXT_LINE_HEIGHT,
                 color: o.color,
+                // pivot on the nominal (newline-count) centre — the same point
+                // the export rotates about, immune to browser soft-wrapping
+                ...(o.rot
+                  ? {
+                      transform: `rotate(${o.rot}deg)`,
+                      transformOrigin: `${(o.w * view.W) / 2}px ${(textNominalHeightPt(o) * scale) / 2}px`,
+                    }
+                  : {}),
               }
               return session?.editingId === o.id ? (
                 <textarea
@@ -1745,6 +1943,8 @@ export default function EditStage() {
                 view={view}
                 onResize={beginResize}
                 onEndpoint={beginEndpoint}
+                onRotate={beginRotate}
+                rotateLabel={t('sig.rotate')}
               />
             )}
 
@@ -1779,11 +1979,15 @@ function SelectionUi({
   view,
   onResize,
   onEndpoint,
+  onRotate,
+  rotateLabel,
 }: {
   obj: EditObj
   view: PageView
   onResize: (e: React.PointerEvent, o: EditObj) => void
   onEndpoint: (e: React.PointerEvent, o: LineObj, which: 1 | 2) => void
+  onRotate: (e: React.PointerEvent, o: EditObj) => void
+  rotateLabel: string
 }) {
   if (obj.kind === 'line' || obj.kind === 'arrow') {
     return (
@@ -1794,18 +1998,36 @@ function SelectionUi({
     )
   }
   const bb = bboxOf(obj, view.hPt)
+  const rot = rotOf(obj)
+  const rotatable = obj.kind === 'text' || obj.kind === 'rect' || obj.kind === 'ellipse' || obj.kind === 'whiteout'
+  // The whole selection chrome lives in one wrapper that spins with the
+  // object (the ±3px outline padding is symmetric, so the wrapper's centre is
+  // exactly the object's pivot); the handles ride along like sign mode.
   return (
-    <>
-      <div
-        className="eo-selection"
-        style={{ left: bb.x * view.W - 3, top: bb.y * view.H - 3, width: bb.w * view.W + 6, height: bb.h * view.H + 6 }}
-      />
+    <div
+      className="eo-selwrap"
+      style={{
+        left: bb.x * view.W - 3,
+        top: bb.y * view.H - 3,
+        width: bb.w * view.W + 6,
+        height: bb.h * view.H + 6,
+        transform: rot ? `rotate(${rot}deg)` : undefined,
+      }}
+    >
+      <div className="eo-selection" style={{ inset: 0 }} />
+      {rotatable && (
+        <span
+          className="eo-handle eo-rotate"
+          title={rotateLabel}
+          onPointerDown={(e) => onRotate(e, obj)}
+        />
+      )}
       <span
         className="eo-handle"
-        style={{ left: (bb.x + bb.w) * view.W - 5, top: (bb.y + bb.h) * view.H - 5, cursor: 'nwse-resize' }}
+        style={{ right: -5, bottom: -5, cursor: 'nwse-resize' }}
         onPointerDown={(e) => onResize(e, obj)}
       />
-    </>
+    </div>
   )
 }
 

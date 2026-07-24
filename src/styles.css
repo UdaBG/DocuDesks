@@ -1809,6 +1809,15 @@ input[type='range'] {
   border-radius: 3px;
   pointer-events: none;
 }
+/* selection chrome that rotates with the object; handles stay interactive */
+.eo-selwrap {
+  position: absolute;
+  pointer-events: none;
+  z-index: 4;
+}
+.eo-selwrap .eo-handle {
+  pointer-events: auto;
+}
 .eo-handle {
   position: absolute;
   width: 12px;
@@ -1819,6 +1828,24 @@ input[type='range'] {
   cursor: nwse-resize;
   touch-action: none;
   z-index: 4;
+}
+/* rotate handle floats above the box's top edge, tethered by a thin stem */
+.eo-rotate {
+  left: 50%;
+  top: -30px;
+  margin-left: -6px;
+  cursor: grab;
+}
+.eo-rotate::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 1.5px;
+  height: 16px;
+  margin-left: -0.75px;
+  background: var(--royal);
+  opacity: 0.55;
 }
 
 .pages-strip {
@@ -2155,6 +2182,11 @@ input[type='range'] {
     flex-wrap: wrap;
     gap: 6px 10px;
     padding: 7px 10px;
+  }
+  /* no room at 360dp (the edit view must keep the bar to a single row) —
+     the licenses button lives in the Documents panel head instead */
+  .topbar-info {
+    display: none;
   }
   .view-toggle {
     order: 4;

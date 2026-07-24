@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useApp } from '../store'
 import type { SigDoc } from '../types'
-import { CheckIcon, CloseIcon, CopyIcon, DocIcon, MergeIcon, PlusIcon, WarnIcon } from './icons'
+import { CheckIcon, CloseIcon, CopyIcon, DocIcon, InfoIcon, MergeIcon, PlusIcon, WarnIcon } from './icons'
 import MergeDialog from './edit/MergeDialog'
+import Attributions from './Attributions'
+import { useMediaQuery } from '../lib/useMediaQuery'
 
 function StatusDot({ doc }: { doc: SigDoc }) {
   if (doc.status === 'signed') return <span className="dot dot-green"><CheckIcon size={11} /></span>
@@ -22,7 +24,11 @@ export default function DocumentList() {
   const openFileDialog = useApp((s) => s.openFileDialog)
   const duplicateDoc = useApp((s) => s.duplicateDoc)
   const [mergeOpen, setMergeOpen] = useState(false)
+  const [showLicenses, setShowLicenses] = useState(false)
   const mergeable = docs.filter((d) => d.status !== 'error').length
+  // phones hide the top bar's licenses button (no room at 360dp) — it lives
+  // here in the Documents panel head instead
+  const narrow = useMediaQuery('(max-width: 760px)')
 
   return (
     <aside className="panel docs-panel">
@@ -35,7 +41,18 @@ export default function DocumentList() {
             {t('docs.clear')}
           </button>
         )}
+        {narrow && (
+          <button
+            className="icon-btn"
+            aria-label={t('licenses.title')}
+            title={t('licenses.title')}
+            onClick={() => setShowLicenses(true)}
+          >
+            <InfoIcon size={15} />
+          </button>
+        )}
       </div>
+      {showLicenses && <Attributions onClose={() => setShowLicenses(false)} />}
       <button className="add-btn" onClick={() => void openFileDialog()}>
         <PlusIcon size={15} />
         {t('docs.add')}

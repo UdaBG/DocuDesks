@@ -70,6 +70,8 @@ export interface ShapeObj extends BaseObj {
   fill: string | null
   opacity: number
   dash?: DashStyle
+  /** degrees, clockwise on screen, about the box centre (same as stamps) */
+  rot?: number
 }
 
 export interface LineObj extends BaseObj {
@@ -102,6 +104,13 @@ export interface TextObj extends BaseObj {
   highlight: string | null
   /** graded weight (400..900) when known more precisely than bold on/off */
   weightHint?: number
+  /**
+   * degrees, clockwise on screen, about the box's nominal centre (see
+   * textNominalHeightPt — newline count only, so preview and export agree on
+   * the pivot no matter how the browser soft-wraps). Vertical source text
+   * retypes with rot ±90 so the replacement lies the same way.
+   */
+  rot?: number
   /** set when this box was created by the retype tool */
   retypeOf?: {
     coverId: string
@@ -121,13 +130,66 @@ export function textStyleFingerprint(o: {
   underline: boolean
   strike: boolean
   highlight: string | null
+  rot?: number
 }): string {
-  return [o.fontId, o.sizePt, o.color, o.bold, o.italic, o.underline, o.strike, o.highlight].join('|')
+  return [o.fontId, o.sizePt, o.color, o.bold, o.italic, o.underline, o.strike, o.highlight, o.rot ?? 0].join('|')
 }
 
 /** Shared text metrics: keep the on-screen preview and the PDF export in sync. */
 export const TEXT_LINE_HEIGHT = 1.3
 export const TEXT_BASELINE = 0.94
+
+/**
+ * Nominal height of a text box in PDF points, counting only explicit newlines.
+ * The browser may soft-wrap to more visual lines, but the rotation pivot must
+ * be identical in the DOM preview and the PDF export — so both derive it from
+ * this, never from a rendered height.
+ */
+export function textNominalHeightPt(o: { text: string; sizePt: number }): number {
+  const lines = o.text ? o.text.split('\n').length : 1
+  return lines * TEXT_LINE_HEIGHT * o.sizePt
+}
+
+/**
+ * Rotation pivot of an object, in screen-oriented PDF points (x right, y down
+ * from the page's top-left). Shapes and whiteout pivot on their box centre;
+ * text pivots on the centre of its nominal (newline-count) box.
+ */
+export function rotationPivotPt(o: EditObj, wPt: number, hPt: number): { x: number; y: number } {
+  if (o.kind === 'text') {
+    return { x: (o.x + o.w / 2) * wPt, y: o.y * hPt + textNominalHeightPt(o) / 2 }
+  }
+  if (o.kind === 'rect' || o.kind === 'ellipse' || o.kind === 'whiteout') {
+    return { x: (o.x + o.w / 2) * wPt, y: (o.y + o.h / 2) * hPt }
+  }
+  return { x: 0, y: 0 }
+}
+
+/** The object's rotation in degrees (0 when absent or of a kind that has none). */
+export function rotOf(o: EditObj): number {
+  return (o.kind === 'text' || o.kind === 'rect' || o.kind === 'ellipse' || o.kind === 'whiteout') && o.rot
+    ? o.rot
+    : 0
+}
+
+/**
+ * Rotate a point about a pivot in screen coordinates (y down); positive
+ * degrees turn clockwise on screen — the same convention as signature stamps.
+ */
+export function rotatePointScreen(
+  px: number,
+  py: number,
+  cx: number,
+  cy: number,
+  deg: number,
+): { x: number; y: number } {
+  const rad = (deg * Math.PI) / 180
+  const c = Math.cos(rad)
+  const s = Math.sin(rad)
+  const dx = px - cx
+  const dy = py - cy
+  return { x: cx + dx * c - dy * s, y: cy + dx * s + dy * c }
+}
 
 export interface WhiteoutObj extends BaseObj {
   kind: 'whiteout'
@@ -136,6 +198,8 @@ export interface WhiteoutObj extends BaseObj {
   w: number
   h: number
   fill: string
+  /** degrees, clockwise on screen, about the box centre (same as stamps) */
+  rot?: number
 }
 
 export type EditObj = InkObj | ShapeObj | LineObj | TextObj | WhiteoutObj

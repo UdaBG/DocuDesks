@@ -5,7 +5,7 @@ import { dataUrlToBytes } from '../lib/imageUtils'
 import { flattenAnnotations } from '../lib/pdfFlatten'
 import { resolveFont } from './fonts'
 import type { EditObj, EditSession, TextObj, Watermark } from './types'
-import { dashPattern, TEXT_BASELINE, TEXT_LINE_HEIGHT } from './types'
+import { dashPattern, TEXT_BASELINE, TEXT_LINE_HEIGHT, textNominalHeightPt } from './types'
 
 function hexToRgb(hex: string): RGB {
   const v = parseInt(hex.slice(1), 16)
@@ -93,16 +93,36 @@ function drawTextObj(page: PDFPage, o: TextObj, font: PDFFont, pw: number, ph: n
   const yTop = o.y * ph
   const baselineFor = (i: number) => ph - yTop - (TEXT_BASELINE + i * TEXT_LINE_HEIGHT) * size
 
+  // Rotation about the box's nominal centre. Screen rot is clockwise (y-down);
+  // in PDF space (y-up, ccw-positive) the same visual turn is -rot — matching
+  // how signature stamps export. Every drawn element keeps its own rotate flag
+  // while its anchor point orbits the shared pivot.
+  const rot = o.rot ?? 0
+  const rad = (-rot * Math.PI) / 180
+  const cos = Math.cos(rad)
+  const sin = Math.sin(rad)
+  const pivotX = (o.x + o.w / 2) * pw
+  const pivotY = ph - (yTop + textNominalHeightPt(o) / 2)
+  const spin = (px: number, py: number): { x: number; y: number } => {
+    if (!rot) return { x: px, y: py }
+    const dx = px - pivotX
+    const dy = py - pivotY
+    return { x: pivotX + dx * cos - dy * sin, y: pivotY + dx * sin + dy * cos }
+  }
+
   if (o.highlight) {
     const hl = hexToRgb(o.highlight)
     lines.forEach((line, i) => {
       if (!line) return
+      // pdf-lib rotates a rectangle about its own (x, y) corner
+      const corner = spin(x - size * 0.08, baselineFor(i) - size * 0.26)
       page.drawRectangle({
-        x: x - size * 0.08,
-        y: baselineFor(i) - size * 0.26,
+        x: corner.x,
+        y: corner.y,
         width: safeWidth(font, line, size) + size * 0.16,
         height: size * 1.24,
         color: hl,
+        ...(rot ? { rotate: degrees(-rot) } : {}),
       })
     })
   }
@@ -110,20 +130,28 @@ function drawTextObj(page: PDFPage, o: TextObj, font: PDFFont, pw: number, ph: n
   lines.forEach((line, i) => {
     if (!line) return
     const baseline = baselineFor(i)
-    page.drawText(line, { x, y: baseline, size, font, color })
+    const start = spin(x, baseline)
+    page.drawText(line, {
+      x: start.x,
+      y: start.y,
+      size,
+      font,
+      color,
+      ...(rot ? { rotate: degrees(-rot) } : {}),
+    })
     const lineWidth = safeWidth(font, line, size)
     if (o.underline) {
       page.drawLine({
-        start: { x, y: baseline - size * 0.12 },
-        end: { x: x + lineWidth, y: baseline - size * 0.12 },
+        start: spin(x, baseline - size * 0.12),
+        end: spin(x + lineWidth, baseline - size * 0.12),
         thickness: Math.max(size * 0.06, 0.6),
         color,
       })
     }
     if (o.strike) {
       page.drawLine({
-        start: { x, y: baseline + size * 0.27 },
-        end: { x: x + lineWidth, y: baseline + size * 0.27 },
+        start: spin(x, baseline + size * 0.27),
+        end: spin(x + lineWidth, baseline + size * 0.27),
         thickness: Math.max(size * 0.06, 0.6),
         color,
       })
@@ -131,18 +159,46 @@ function drawTextObj(page: PDFPage, o: TextObj, font: PDFFont, pw: number, ph: n
   })
 }
 
+/**
+ * Bottom-left corner of a box rotated about its centre, in PDF coords —
+ * pdf-lib's drawRectangle rotates about the rectangle's own (x, y) corner, so
+ * to spin a box in place the corner itself must orbit the centre. Screen rot
+ * is clockwise; PDF is ccw-positive, hence -rot (as with signature stamps).
+ */
+function rotatedBoxCorner(
+  o: { x: number; y: number; w: number; h: number; rot?: number },
+  pw: number,
+  ph: number,
+): { x: number; y: number } {
+  const blX = o.x * pw
+  const blY = ph - (o.y + o.h) * ph
+  if (!o.rot) return { x: blX, y: blY }
+  const rad = (-o.rot * Math.PI) / 180
+  const cx = (o.x + o.w / 2) * pw
+  const cy = ph - (o.y + o.h / 2) * ph
+  const dx = blX - cx
+  const dy = blY - cy
+  return {
+    x: cx + dx * Math.cos(rad) - dy * Math.sin(rad),
+    y: cy + dx * Math.sin(rad) + dy * Math.cos(rad),
+  }
+}
+
 function drawObject(page: PDFPage, o: EditObj, fonts: Map<string, PDFFont>) {
   const { width: pw, height: ph } = page.getSize()
   switch (o.kind) {
-    case 'whiteout':
+    case 'whiteout': {
+      const corner = rotatedBoxCorner(o, pw, ph)
       page.drawRectangle({
-        x: o.x * pw,
-        y: ph - (o.y + o.h) * ph,
+        x: corner.x,
+        y: corner.y,
         width: o.w * pw,
         height: o.h * ph,
         color: hexToRgb(o.fill),
+        ...(o.rot ? { rotate: degrees(-o.rot) } : {}),
       })
       break
+    }
     case 'rect':
     case 'ellipse': {
       const common = {
@@ -155,20 +211,24 @@ function drawObject(page: PDFPage, o: EditObj, fonts: Map<string, PDFFont>) {
         borderLineCap: o.dash === 'dotted' ? LineCapStyle.Round : undefined,
       }
       if (o.kind === 'rect') {
+        const corner = rotatedBoxCorner(o, pw, ph)
         page.drawRectangle({
-          x: o.x * pw,
-          y: ph - (o.y + o.h) * ph,
+          x: corner.x,
+          y: corner.y,
           width: o.w * pw,
           height: o.h * ph,
           ...common,
+          ...(o.rot ? { rotate: degrees(-o.rot) } : {}),
         })
       } else {
+        // an ellipse is drawn about its centre, which IS the pivot
         page.drawEllipse({
           x: (o.x + o.w / 2) * pw,
           y: ph - (o.y + o.h / 2) * ph,
           xScale: (o.w / 2) * pw,
           yScale: (o.h / 2) * ph,
           ...common,
+          ...(o.rot ? { rotate: degrees(-o.rot) } : {}),
         })
       }
       break

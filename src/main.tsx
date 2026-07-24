@@ -48,6 +48,25 @@ void import('./lib/ocr').then((m) => {
   return out
 }
 
+// Test helper: text items with their placement matrices (used to verify that
+// rotated text — e.g. vertical retype — lands at the right spot and angle).
+;(window as unknown as Record<string, unknown>).__pdfTextGeom = async (bytes: ArrayLike<number>) => {
+  const { openPdf } = await import('./lib/pdf')
+  const { doc, close } = await openPdf(new Uint8Array(bytes))
+  const out: { page: number; str: string; transform: number[]; width: number; height: number }[] = []
+  for (let p = 1; p <= doc.numPages; p++) {
+    const page = await doc.getPage(p)
+    const tc = await page.getTextContent()
+    for (const i of tc.items) {
+      if ('str' in i && i.str.trim()) {
+        out.push({ page: p, str: i.str, transform: [...i.transform], width: i.width, height: i.height })
+      }
+    }
+  }
+  await close()
+  return out
+}
+
 // Safety net for Android file picks (delivered from MainActivity, which sees
 // every activity result even when Tauri's plugin callback was lost to an
 // activity recreation behind the picker). Files already added — the normal
@@ -94,6 +113,19 @@ type PickedItem = string | { uri: string; name?: string }
     }
   })()
   return true
+}
+
+// Test helper: build a PDF with a vertically-rotated label (like a table
+// header) so the vertical-retype regression has a deterministic input.
+;(window as unknown as Record<string, unknown>).__makeVerticalPdf = async (label: string) => {
+  const { PDFDocument, StandardFonts, degrees } = await import('pdf-lib')
+  const doc = await PDFDocument.create()
+  const page = doc.addPage([595, 842])
+  const font = await doc.embedFont(StandardFonts.Helvetica)
+  page.drawText('Course Code Listing', { x: 60, y: 780, size: 12, font })
+  // reads bottom-to-top, the common table-header orientation
+  page.drawText(label, { x: 300, y: 400, size: 10, font, rotate: degrees(90) })
+  return doc.save()
 }
 
 // Test helper: build a "scanned" PDF (text rasterized to an image, no text
