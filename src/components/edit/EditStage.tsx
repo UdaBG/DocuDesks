@@ -1573,7 +1573,11 @@ export default function EditStage() {
     const px = (f: number) => f * view.W
     const py = (f: number) => f * view.H
     const sw = (pt: number) => pt * scale
-    const hit = tool === 'select' ? { className: 'eo-hit', onPointerDown: (e: React.PointerEvent) => beginMove(e, o), style: { cursor: 'move' } } : {}
+    // pointerEvents 'all': a stroke-only shape must be grabbable by its
+    // interior, not just its hairline outline — SVG's default visiblePainted
+    // hit-testing ignores unfilled areas (text divs and filled whiteouts never
+    // had this problem, which is why only shapes felt immovable)
+    const hit = tool === 'select' ? { className: 'eo-hit', onPointerDown: (e: React.PointerEvent) => beginMove(e, o), style: { cursor: 'move', pointerEvents: 'all' as const } } : {}
     // SVG rotate() is clockwise-positive in screen coordinates — the same
     // convention the export mirrors with degrees(-rot) in PDF space
     const boxSpin = (b: { x: number; y: number; w: number; h: number; rot?: number }) =>
