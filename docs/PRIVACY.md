@@ -1,6 +1,6 @@
 # DocuDesk — Privacy Policy
 
-**Last updated: 7 July 2026**
+**Last updated: 8 July 2026**
 
 DocuDesk (and DocuDesk Lite) is a free application for signing and editing PDF
 documents, available for Windows and Android. This policy explains, in plain
@@ -54,9 +54,10 @@ No document content is ever sent anywhere for these features.
 
 ## Permissions
 
-- **Android** — the app requests no sensitive or personal-data permissions. It
-  reads only the specific files you pick through Android's own document
-  picker, and writes only where you choose to save.
+- **Android** — the app requests no sensitive or personal-data permissions and
+  has no internet access at all. It reads only the specific files you pick
+  through Android's own document picker, and writes only where you choose to
+  save.
 - **Windows** — standard desktop file access, limited to the files and folders
   you open or save to.
 
@@ -78,9 +79,4 @@ address with a new "Last updated" date.
 
 ## Contact
 
-Questions about this policy or the app: **&lt;your-contact-email&gt;**
-
-<!-- BEFORE PUBLISHING: replace <your-contact-email> with the address you want
-     shown publicly (ideally the same one used for the Play Console account),
-     and confirm the "Permissions → Android" wording once the INTERNET
-     permission is removed (Release Plan step A3). -->
+Questions about this policy or the app: **udaabhagya@gmail.com**
