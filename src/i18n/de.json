@@ -192,6 +192,8 @@
   "unlock.action": "Entsperren",
   "unlock.cancel": "Jetzt nicht",
   "unlock.working": "Wird entsperrt…",
+  "licenses.title": "Open-Source-Lizenzen",
+  "licenses.intro": "DocuDesk verwendet diese Open-Source-Komponenten. Vielen Dank an ihre Autoren.",
   "error.unlockFailed": "„{{name}}“ konnte nicht entsperrt werden — evtl. ist ein Öffnungspasswort nötig",
   "stage.prevPage": "Vorherige Seite",
   "stage.nextPage": "Nächste Seite",

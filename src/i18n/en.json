@@ -192,6 +192,8 @@
   "unlock.action": "Unlock",
   "unlock.cancel": "Not now",
   "unlock.working": "Unlocking…",
+  "licenses.title": "Open-source licenses",
+  "licenses.intro": "DocuDesk is built with these open-source components. Thank you to their authors.",
   "error.unlockFailed": "Could not unlock \"{{name}}\" — it may need an open password",
   "stage.prevPage": "Previous page",
   "stage.nextPage": "Next page",

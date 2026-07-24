@@ -192,6 +192,8 @@
   "unlock.action": "Desbloquear",
   "unlock.cancel": "Ahora no",
   "unlock.working": "Desbloqueando…",
+  "licenses.title": "Licencias de código abierto",
+  "licenses.intro": "DocuDesk usa estos componentes de código abierto. Gracias a sus autores.",
   "error.unlockFailed": "No se pudo desbloquear «{{name}}» — puede requerir una contraseña de apertura",
   "stage.prevPage": "Página anterior",
   "stage.nextPage": "Página siguiente",

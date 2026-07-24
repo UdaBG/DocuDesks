@@ -192,6 +192,8 @@
   "unlock.action": "අගුළු අරින්න",
   "unlock.cancel": "දැන් නොවේ",
   "unlock.working": "අගුළු අරිමින්…",
+  "licenses.title": "විවෘත මූලාශ්‍ර බලපත්‍ර",
+  "licenses.intro": "DocuDesk මෙම විවෘත මූලාශ්‍ර සංරචක භාවිතා කරයි. ඒවායේ කතුවරුන්ට ස්තූතියි.",
   "error.unlockFailed": "\"{{name}}\" අගුළු ඇරිය නොහැකි විය — විවෘත මුරපදයක් අවශ්‍ය විය හැක",
   "stage.prevPage": "පෙර පිටුව",
   "stage.nextPage": "ඊළඟ පිටුව",

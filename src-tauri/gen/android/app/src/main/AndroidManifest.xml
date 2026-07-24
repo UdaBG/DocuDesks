@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- No INTERNET permission: the app is fully offline. Tauri serves the
+         frontend from the local tauri.localhost scheme, not a network socket.
+         (If a device shows a blank screen, restore this permission.) -->
 
     <!-- AndroidTV support -->
     <uses-feature android:name="android.software.leanback" android:required="false" />

@@ -1,11 +1,14 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useApp } from '../store'
 import { LANGUAGES, type LanguageCode } from '../i18n'
 import { isTauri } from '../platform/tauriApi'
-import { NibIcon, SparkIcon } from './icons'
+import { InfoIcon, NibIcon, SparkIcon } from './icons'
+import Attributions from './Attributions'
 
 export default function TopBar() {
   const { t } = useTranslation()
+  const [showLicenses, setShowLicenses] = useState(false)
   const mode = useApp((s) => s.mode)
   const setMode = useApp((s) => s.setMode)
   const view = useApp((s) => s.view)
@@ -66,6 +69,16 @@ export default function TopBar() {
           ))}
         </select>
       </label>
+
+      <button
+        className="icon-btn topbar-info"
+        aria-label={t('licenses.title')}
+        title={t('licenses.title')}
+        onClick={() => setShowLicenses(true)}
+      >
+        <InfoIcon size={16} />
+      </button>
+      {showLicenses && <Attributions onClose={() => setShowLicenses(false)} />}
     </header>
   )
 }
