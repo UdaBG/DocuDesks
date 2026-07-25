@@ -39,6 +39,10 @@ class MainActivity : TauriActivity() {
       isAppearanceLightStatusBars = true
       isAppearanceLightNavigationBars = true
     }
+    // "Open with DocuDesk" cold start: the tapped document rides the launch
+    // intent. Only on a fresh launch — a recreation (rotation, theme change)
+    // replays the same intent and must not re-add a document the user closed.
+    if (savedInstanceState == null) handleOpenIntent(intent)
   }
 
   /**
@@ -60,6 +64,43 @@ class MainActivity : TauriActivity() {
     data.clipData?.let { clip ->
       for (i in 0 until clip.itemCount) uris.add(clip.getItemAt(i).uri)
     }
+    deliverUris(uris)
+  }
+
+  /**
+   * "Open with DocuDesk" / share-sheet delivery. The manifest's VIEW/SEND
+   * intent filter puts the app in those menus, but nothing in the Tauri glue
+   * reads the incoming intent (plugins only see onNewIntent, and none handles
+   * documents) — without this the app would open empty. Cold starts read the
+   * launch intent here; an already-running (singleTask) instance gets it via
+   * onNewIntent below.
+   */
+  private fun handleOpenIntent(intent: Intent?) {
+    if (intent == null) return
+    val action = intent.action
+    if (action != Intent.ACTION_VIEW && action != Intent.ACTION_SEND && action != Intent.ACTION_SEND_MULTIPLE) return
+    val uris = mutableListOf<Uri>()
+    intent.data?.let { uris.add(it) }
+    intent.clipData?.let { clip ->
+      for (i in 0 until clip.itemCount) clip.getItemAt(i).uri?.let { uris.add(it) }
+    }
+    if (action == Intent.ACTION_SEND) {
+      @Suppress("DEPRECATION")
+      (intent.getParcelableExtra(Intent.EXTRA_STREAM) as? Uri)?.let { uris.add(it) }
+    } else if (action == Intent.ACTION_SEND_MULTIPLE) {
+      @Suppress("DEPRECATION")
+      intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)?.let { uris.addAll(it) }
+    }
+    deliverUris(uris.distinct())
+  }
+
+  override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    handleOpenIntent(intent)
+  }
+
+  /** Forward {uri, name} pairs to the web app, retrying while it boots. */
+  private fun deliverUris(uris: List<Uri>) {
     if (uris.isEmpty()) return
     // Forward {uri, name} so the web app can show the file's real name — the
     // content URI alone only carries a document id (e.g. "document:1000048777").
@@ -71,7 +112,7 @@ class MainActivity : TauriActivity() {
     val root = window.decorView
     var attempts = 0
     // the web app may still be booting (process recreated behind the
-    // picker) — retry until the hook exists
+    // picker, or a cold "open with" launch) — retry until the hook exists
     lateinit var deliver: Runnable
     deliver = Runnable {
       val wv = findWebView(root)
