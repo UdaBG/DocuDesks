@@ -200,6 +200,8 @@ ipcMain.handle('shell:print-data', async (_e, name: string, data: Uint8Array) =>
 
 ipcMain.handle('app:get-locale', () => app.getLocale())
 
+ipcMain.handle('app:quit', () => app.quit())
+
 ipcMain.handle('app:get-pending-files', () => {
   const files = pendingFiles
   pendingFiles = []

@@ -148,6 +148,13 @@ interface AppState {
   openStudio(): void
   closeStudio(): void
   dismissResult(): void
+  /** Android back button: "unsaved changes — stay or leave" confirmation */
+  exitPrompt: boolean
+  requestExit(): void
+  dismissExitPrompt(): void
+  /** Android back button: transient "press back again to exit" toast */
+  backToast: boolean
+  showBackToast(): void
   setLanguage(code: LanguageCode): Promise<void>
   signAll(): Promise<void>
   /** print the documents with their current stamps — nothing is saved */
@@ -182,6 +189,8 @@ export const useApp = create<AppState>((set, get) => ({
   signing: null,
   result: null,
   studioOpen: false,
+  exitPrompt: false,
+  backToast: false,
   language: 'en',
 
   async init() {
@@ -637,6 +646,16 @@ export const useApp = create<AppState>((set, get) => ({
   },
   dismissResult() {
     set({ result: null })
+  },
+  requestExit() {
+    set({ exitPrompt: true })
+  },
+  dismissExitPrompt() {
+    set({ exitPrompt: false })
+  },
+  showBackToast() {
+    set({ backToast: true })
+    setTimeout(() => set({ backToast: false }), 2000)
   },
 
   async setLanguage(code) {

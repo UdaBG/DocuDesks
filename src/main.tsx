@@ -12,7 +12,8 @@ import '@fontsource/caveat'
 import '@fontsource/homemade-apple'
 import './styles.css'
 import App from './App'
-import { useApp } from './store'
+import { useApp, sessionHasEdits } from './store'
+import { useEdit } from './editor/editStore'
 import { createTauriApi, isTauri, type SaveGuard } from './platform/tauriApi'
 import { displayNameFromPath } from './lib/fileName'
 
@@ -78,6 +79,73 @@ void import('./lib/ocr').then((m) => {
 // mobile save path (tauriApi.writeSigned) marks a suppression window and the
 // exact saved URI; we skip both here. We still return true so MainActivity
 // stops retrying the delivery.
+// Android back button (forwarded from MainActivity). Standard "innermost
+// first" ladder — each press peels one layer, so back never silently kills
+// the app: 1) close an open overlay, 2) commit the text box being typed
+// (drops the keyboard), 3) put an active drawing tool back to select,
+// 4) deselect, 5) unsaved work -> Stay/Leave prompt, 6) nothing to lose ->
+// double-press-to-exit. Returns 'handled' or 'exit' — MainActivity backgrounds
+// the app only on 'exit'; the prompt's Leave button quits via exitApp().
+let lastBackAt = 0
+;(window as unknown as Record<string, unknown>).__handleBackButton = (): string => {
+  const app = useApp.getState()
+  const edit = useEdit.getState()
+  // 1. overlays, most specific first (the exit prompt itself dismisses = Stay)
+  if (app.exitPrompt) {
+    app.dismissExitPrompt()
+    return 'handled'
+  }
+  if (app.studioOpen) {
+    app.closeStudio()
+    return 'handled'
+  }
+  if (app.result) {
+    app.dismissResult()
+    return 'handled'
+  }
+  const veil = document.querySelector('.modal-veil')
+  if (veil) {
+    // dialogs with an explicit cancel (unlock's "Not now", merge) take it;
+    // veil-dismissable ones (licenses) just close
+    const cancel = veil.querySelector<HTMLElement>('.dialog-actions .ghost-btn')
+    if (cancel) cancel.click()
+    else (veil as HTMLElement).click()
+    return 'handled'
+  }
+  const doc = app.docs.find((d) => d.id === app.selectedDocId)
+  const session = doc ? edit.sessions[doc.id] : undefined
+  // 2. typing: close the box (blur commits it) and drop the keyboard
+  if (app.view === 'edit' && doc && session?.editingId) {
+    const ta = document.querySelector<HTMLTextAreaElement>('.eo-textarea')
+    if (ta) ta.blur()
+    else edit.setEditing(doc.id, null)
+    return 'handled'
+  }
+  // 3. an active drawing tool goes back to the move tool
+  if (app.view === 'edit' && edit.tool !== 'select') {
+    edit.setTool('select')
+    return 'handled'
+  }
+  // 4. a selected object is deselected
+  if (app.view === 'edit' && doc && session?.selectedId) {
+    edit.select(doc.id, null)
+    return 'handled'
+  }
+  // 5. unsaved work guards the exit
+  const hasUnsaved =
+    app.docs.some((d) => sessionHasEdits(edit.sessions[d.id], d)) || app.extraStamps.length > 0
+  if (hasUnsaved) {
+    app.requestExit()
+    return 'handled'
+  }
+  // 6. nothing to lose: double-press to leave
+  const now = Date.now()
+  if (now - lastBackAt < 2000) return 'exit'
+  lastBackAt = now
+  app.showBackToast()
+  return 'handled'
+}
+
 // MainActivity forwards either bare URI strings or {uri, name} objects, where
 // name is the real DISPLAY_NAME it resolved from Android's ContentResolver
 // (the URI alone only yields a meaningless document id).

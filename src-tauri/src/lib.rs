@@ -24,6 +24,13 @@ fn get_output_dir_override() -> Option<String> {
     std::env::var("SIGNER_OUTPUT_DIR").ok().filter(|s| !s.is_empty())
 }
 
+/// Explicit quit, used by the Android back-button flow ("Leave" on the
+/// unsaved-changes prompt). Desktop windows just close normally.
+#[tauri::command]
+fn exit_app(app: tauri::AppHandle) {
+    app.exit(0);
+}
+
 /// Send PDFs to the OS print pipeline via the shell "print" verb.
 #[tauri::command]
 fn print_files(paths: Vec<String>) -> Result<(), String> {
@@ -128,7 +135,7 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![get_pending_files, get_output_dir_override, print_files])
+        .invoke_handler(tauri::generate_handler![get_pending_files, get_output_dir_override, print_files, exit_app])
         .run(tauri::generate_context!())
         .expect("error while running DocuDesk Lite");
 }

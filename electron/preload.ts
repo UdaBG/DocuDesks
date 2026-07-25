@@ -26,6 +26,8 @@ export interface SignerApi {
   saveSignatures(signatures: unknown): Promise<void>
   loadSettings(): Promise<Record<string, unknown>>
   saveSettings(settings: Record<string, unknown>): Promise<void>
+  /** quit the app — used by the Android back-button "Leave" confirmation */
+  exitApp(): void
 }
 
 const api: SignerApi = {
@@ -51,6 +53,7 @@ const api: SignerApi = {
   saveSignatures: (signatures) => ipcRenderer.invoke('store:save-signatures', signatures),
   loadSettings: () => ipcRenderer.invoke('store:load-settings'),
   saveSettings: (settings) => ipcRenderer.invoke('store:save-settings', settings),
+  exitApp: () => void ipcRenderer.invoke('app:quit'),
 }
 
 contextBridge.exposeInMainWorld('signer', api)

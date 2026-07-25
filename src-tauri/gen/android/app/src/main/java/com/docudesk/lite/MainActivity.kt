@@ -88,6 +88,24 @@ class MainActivity : TauriActivity() {
     root.postDelayed(deliver, 300)
   }
 
+  /**
+   * Back button: forwarded to the web app, which peels one UI layer per press
+   * (close overlay → commit text box → tool to select → deselect → unsaved
+   * prompt → double-press). Only when it answers "exit" does the app move to
+   * the background — back can never silently kill work in progress.
+   */
+  @Deprecated("Deprecated in Android 13; fine while enableOnBackInvokedCallback is off")
+  override fun onBackPressed() {
+    val wv = findWebView(window.decorView)
+    if (wv == null) {
+      moveTaskToBack(true)
+      return
+    }
+    wv.evaluateJavascript("window.__handleBackButton ? window.__handleBackButton() : 'exit'") { result ->
+      if (result != null && result.contains("exit")) moveTaskToBack(true)
+    }
+  }
+
   /** The file's real display name from its content URI, or "" if unavailable. */
   private fun displayName(uri: Uri): String {
     return try {

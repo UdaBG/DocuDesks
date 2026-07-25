@@ -25,6 +25,9 @@ export default function App() {
   const docs = useApp((s) => s.docs)
   const selectedDocId = useApp((s) => s.selectedDocId)
   const unlockProtectedDoc = useApp((s) => s.unlockProtectedDoc)
+  const exitPrompt = useApp((s) => s.exitPrompt)
+  const dismissExitPrompt = useApp((s) => s.dismissExitPrompt)
+  const backToast = useApp((s) => s.backToast)
   const [dragDepth, setDragDepth] = useState(0)
   const [mobileTab, setMobileTab] = useState<MobileTab>('docs')
   const [appError, setAppError] = useState<string | null>(null)
@@ -171,6 +174,28 @@ export default function App() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+      {exitPrompt && (
+        <div className="modal-veil">
+          <div className="modal dialog confirm-dialog" role="dialog" aria-modal="true">
+            <h2>{t('exit.title')}</h2>
+            <p className="muted">{t('exit.body')}</p>
+            <div className="dialog-actions">
+              <button className="ghost-btn" onClick={() => window.signer.exitApp()}>
+                {t('exit.leave')}
+              </button>
+              <div className="spacer" />
+              <button className="btn-primary" onClick={dismissExitPrompt}>
+                {t('exit.stay')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {backToast && (
+        <div className="undo-toast" role="status">
+          <span className="undo-toast-text">{t('back.exitToast')}</span>
         </div>
       )}
       {appError && (

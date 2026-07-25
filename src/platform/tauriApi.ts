@@ -155,6 +155,8 @@ export function createTauriApi(): SignerApi {
     // HTML5 drops already deliver the bytes; the path is only cosmetic.
     getPathForFile: () => '',
 
+    exitApp: () => void invoke('exit_app'),
+
     loadSignatures: async () => (await loadJson('signatures.json')) ?? [],
     saveSignatures: (signatures) => saveJson('signatures.json', signatures),
     loadSettings: async () =>
