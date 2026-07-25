@@ -24,6 +24,21 @@ export function isTauri(): boolean {
   return '__TAURI_INTERNALS__' in window
 }
 
+/**
+ * Mobile Tauri (the Android/iOS app). "Lite" is a DESKTOP distinction — the
+ * lightweight WebView build vs the full Electron one; on mobile there is only
+ * one app, plainly "DocuDesk", so mobile chrome hides the LITE badge.
+ */
+export function isMobileTauri(): boolean {
+  if (!isTauri()) return false
+  try {
+    const p = platform()
+    return p === 'android' || p === 'ios'
+  } catch {
+    return false
+  }
+}
+
 function isMobilePlatform(): boolean {
   const p = platform()
   return p === 'android' || p === 'ios'

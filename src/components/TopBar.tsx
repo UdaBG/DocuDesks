@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useApp } from '../store'
 import { LANGUAGES, type LanguageCode } from '../i18n'
-import { isTauri } from '../platform/tauriApi'
+import { isMobileTauri, isTauri } from '../platform/tauriApi'
 import { InfoIcon, NibIcon, SparkIcon } from './icons'
 import Attributions from './Attributions'
 
@@ -21,7 +21,7 @@ export default function TopBar() {
       <div className="brand">
         <NibIcon size={20} className="brand-nib" />
         <span className="wordmark">DocuDesk</span>
-        {isTauri() && <span className="lite-badge">LITE</span>}
+        {isTauri() && !isMobileTauri() && <span className="lite-badge">LITE</span>}
       </div>
 
       <div className="mode-toggle view-toggle" role="group" aria-label="View">
