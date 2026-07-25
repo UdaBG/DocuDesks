@@ -4,7 +4,7 @@ The current Android App Bundle for Google Play Console uploads.
 
 | File | versionName | versionCode | Signed by |
 |---|---|---|---|
-| `DocuDesk-1.0.2-play.aab` | 1.0.2 | 1000002 | upload key (`CN=DocuDesk`, `upload-key.jks`) |
+| `DocuDesk-1.1.1-play.aab` | 1.1.1 | 1001001 | upload key (`CN=DocuDesk`, `upload-key.jks`) |
 
 - This is the file uploaded under **Play Console → Testing/Production → Create
   release**. Play App Signing re-signs it for distribution, so it is safe to
