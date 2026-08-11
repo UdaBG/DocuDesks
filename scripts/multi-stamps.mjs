@@ -63,10 +63,15 @@ const shot = async (name) => {
   console.log('shot:', name)
 }
 const S = () => `window.__signerStore.getState()`
+// the sign canvas defers placement to pointerup (a clean tap places, a slide
+// pans) — simulate a real press+release on the gesture overlay
 const clickSheet = (fx, fy) => `(() => {
-  const sheet = document.querySelector('.sheet')
+  const sheet = document.querySelector('.sign-overlay')
   const r = sheet.getBoundingClientRect()
-  sheet.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: r.left + ${fx} * r.width, clientY: r.top + ${fy} * r.height }))
+  const opts = { bubbles: true, clientX: r.left + ${fx} * r.width, clientY: r.top + ${fy} * r.height,
+    button: 0, buttons: 1, isPrimary: true, pointerId: 990, pointerType: 'mouse' }
+  sheet.dispatchEvent(new PointerEvent('pointerdown', opts))
+  sheet.dispatchEvent(new PointerEvent('pointerup', { ...opts, buttons: 0 }))
   return true
 })()`
 

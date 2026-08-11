@@ -1569,8 +1569,9 @@ input[type='range'] {
   display: flex;
   padding: 16px;
 }
-/* the reader has no toolbar or pages strip — the paper gets the full stage */
-.read-scroll {
+/* read + sign have no toolbar or pages strip — the paper gets the full stage */
+.read-scroll,
+.sign-scroll {
   position: absolute;
   inset: 0;
   overflow: auto;
@@ -1583,18 +1584,21 @@ input[type='range'] {
   position: relative;
 }
 .edit-scroll .edit-sheet,
-.read-scroll .edit-sheet {
+.read-scroll .edit-sheet,
+.sign-scroll .stack-wrap {
   transform-origin: top left;
 }
 /* pan surface: one finger or mouse drags the paper, two fingers pinch */
-.read-overlay {
+.read-overlay,
+.sign-overlay {
   position: absolute;
   inset: 0;
   touch-action: none;
   z-index: 2;
   cursor: grab;
 }
-.read-overlay:active {
+.read-overlay:active,
+.sign-overlay:active {
   cursor: grabbing;
 }
 

@@ -5,6 +5,7 @@ import { useEdit } from '../editor/editStore'
 import { buildEditedPdf } from '../editor/exportPdf'
 import { openPdf, renderPage, type OpenedPdf, type RenderedPage } from '../lib/pdf'
 import { effectivePlacement, fitStampBox, resolvePageIndex } from '../types'
+import { useZoomPan } from '../lib/useZoomPan'
 import { ChevronLeftIcon, ChevronRightIcon, CloseIcon, DocMinusIcon, NibIcon, PlusIcon } from './icons'
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
@@ -58,12 +59,43 @@ export default function Stage() {
   const [space, setSpace] = useState({ w: 0, h: 0 })
   const openedRef = useRef<{ id: string; opened: OpenedPdf } | null>(null)
   const [rendered, setRendered] = useState<RenderedPage | null>(null)
+  const renderedRef = useRef<RenderedPage | null>(null)
+  useEffect(() => {
+    renderedRef.current = rendered
+  }, [rendered])
   // preview bytes = edited version when the doc has edits, else the original
   const [preview, setPreview] = useState<{ key: string; bytes: Uint8Array } | null>(null)
   const buildSeqRef = useRef(0)
   const dragRef = useRef<DragState | null>(null)
   /** pending ×-removal awaiting confirmation ('primary' or a stamp id) */
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null)
+
+  // the shared canvas: pinch/wheel zoom, pan, tap-vs-slide (same machinery
+  // as the Edit and Read views)
+  const zp = useZoomPan({
+    getSheetSize: () =>
+      renderedRef.current
+        ? { W: renderedRef.current.width, H: renderedRef.current.height }
+        : null,
+    spaceW: space.w,
+    view: rendered,
+    onPinchStart: () => {
+      // second finger: this is a zoom, not a stamp drag
+      dragRef.current = null
+    },
+  })
+
+  // fit-zoom resets when SWITCHING documents; a rev bump on the same doc
+  // (Apply to stack, unlock) keeps the user's zoom and puts the scroll back
+  const docKey = doc ? `${doc.id}:${doc.rev}` : ''
+  const prevDocIdRef = useRef('')
+  useEffect(() => {
+    const idChanged = prevDocIdRef.current !== (doc?.id ?? '')
+    prevDocIdRef.current = doc?.id ?? ''
+    if (idChanged) zp.resetZoom()
+    else zp.queueScrollRestore()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [docKey])
 
   useEffect(() => {
     const el = spaceRef.current
@@ -149,18 +181,33 @@ export default function Stage() {
       const mx = space.w < 560 ? 30 : 120
       const my = space.h < 720 ? 76 : 130
       try {
-        const r = await renderPage(openedRef.current!.opened.doc, page, space.w - mx, space.h - my)
-        if (!cancelled) setRendered(r)
+        // fit at zoom 1 matches the old fixed layout; zooming grows the page
+        // inside the scroll canvas at device resolution (bounded pixel budget)
+        const r = await renderPage(
+          openedRef.current!.opened.doc,
+          page,
+          (space.w - mx) * zp.zoom,
+          (space.h - my) * zp.zoom,
+          3,
+          20_000_000,
+        )
+        if (!cancelled) {
+          setRendered(r)
+          // the crisp render replaces the interim CSS scale
+          zp.commitRender()
+        }
       } catch {
         /* render races with close on rapid switching — the next effect run repaints */
       }
     }
-    void run()
+    // tiny debounce so rapid zoom steps collapse into one crisp render
+    const timer = setTimeout(() => void run(), 50)
     return () => {
       cancelled = true
+      clearTimeout(timer)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [previewKey, docOk, previewPage, space.w, space.h])
+  }, [previewKey, docOk, previewPage, space.w, space.h, zp.zoom])
 
   // --- placement boxes in CSS px -------------------------------------------
   const pl = doc && docOk ? effectivePlacement(doc, mode, placement) : null
@@ -222,6 +269,7 @@ export default function Stage() {
     b: { x: number; top: number; w: number; h: number },
     aspect: number,
   ) {
+    if (zp.isPinching()) return // two fingers are zooming, not dragging
     e.preventDefault()
     e.stopPropagation()
     try {
@@ -246,6 +294,8 @@ export default function Stage() {
     if (!d.moved) return
     const W = rendered.width
     const H = rendered.height
+    // mid-pinch the sheet is CSS-scaled: pointer deltas arrive in scaled space
+    const ps = zp.pendingScaleRef.current
     if (d.kind === 'rotate') {
       if (!d.center) return
       // the handle sits above the centre, so straight up = 0°
@@ -257,11 +307,11 @@ export default function Stage() {
       return
     }
     if (d.kind === 'move') {
-      const x = clamp(d.box.x + e.clientX - d.startX, 0, W - d.box.w)
-      const top = clamp(d.box.top + e.clientY - d.startY, 0, H - d.box.h)
+      const x = clamp(d.box.x + (e.clientX - d.startX) / ps, 0, W - d.box.w)
+      const top = clamp(d.box.top + (e.clientY - d.startY) / ps, 0, H - d.box.h)
       commitBox(d.target, { x, top, w: d.box.w, h: d.box.h })
     } else {
-      let w = clamp(d.box.w + (e.clientX - d.startX), W * 0.05, W * 0.6)
+      let w = clamp(d.box.w + (e.clientX - d.startX) / ps, W * 0.05, W * 0.6)
       w = Math.min(w, W - d.box.x)
       const bottom = d.box.top + d.box.h
       if (bottom - w * d.aspect < 0) w = bottom / d.aspect
@@ -277,33 +327,69 @@ export default function Stage() {
     if (d && !d.moved) setSelectedStamp(d.target)
   }
 
-  function onSheetClick(e: React.MouseEvent) {
-    if (!rendered || !signature || !doc || !docOk) return
-    if ((e.target as HTMLElement).closest('.sig-box')) return
-    // clicking empty paper first deselects — never place by accident
+  // Empty paper: a clean tap acts (deselect, or place a stamp centered on the
+  // tap); a slide pans the canvas. Placement is deferred to pointerup so a
+  // zoomed document can be navigated without dropping stamps — the same
+  // tap-vs-slide logic the edit view's text tools use.
+  function onSheetPointerDown(e: React.PointerEvent) {
+    if (e.button !== 0) return // middle button pans via the scroll container
+    if (zp.isPinching()) return
+    if ((e.target as HTMLElement).closest('.sig-box')) return // stamps drag themselves
+    const rect = e.currentTarget.getBoundingClientRect()
+    const xf = clamp((e.clientX - rect.left) / rect.width, 0, 1)
+    const yf = clamp((e.clientY - rect.top) / rect.height, 0, 1)
+    zp.startPan(e)
+    zp.beginTap(e, xf, yf)
+    try {
+      ;(e.currentTarget as Element).setPointerCapture(e.pointerId)
+    } catch {
+      /* synthetic or stale pointer */
+    }
+  }
+
+  function onSheetPointerMove(e: React.PointerEvent) {
+    zp.trackTap(e)
+  }
+
+  function onSheetPointerUp() {
+    const tap = zp.takeTap()
+    if (!tap || tap.moved) return // a slide was a pan
+    // tapping empty paper first deselects — never place by accident
     if (selectedStampId) {
       setSelectedStamp(null)
       return
     }
-    const rect = e.currentTarget.getBoundingClientRect()
-    const cx = e.clientX - rect.left
-    const cy = e.clientY - rect.top
+    if (!rendered || !signature || !doc || !docOk) return
     const W = rendered.width
     const H = rendered.height
     const w = placement.w * W
     const h = w * (signature.height / signature.width)
-    const x = clamp(cx - w / 2, 0, W - w)
-    const top = clamp(cy - h / 2, 0, H - h)
+    const x = clamp(tap.xf * W - w / 2, 0, W - w)
+    const top = clamp(tap.yf * H - h / 2, 0, H - h)
     addExtraStamp({ x: x / W, yb: (top + h) / H, w: w / W })
   }
 
-  // Esc deselects
+  // Esc deselects; Ctrl +/-/0 zooms like the other views
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && useApp.getState().selectedStampId) setSelectedStamp(null)
+      const tag = (e.target as HTMLElement).tagName
+      const typing = tag === 'TEXTAREA' || tag === 'INPUT'
+      if (e.key === 'Escape' && useApp.getState().selectedStampId) {
+        setSelectedStamp(null)
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+') && !typing) {
+        e.preventDefault()
+        zp.zoomStep(1.2)
+      } else if ((e.ctrlKey || e.metaKey) && e.key === '-' && !typing) {
+        e.preventDefault()
+        zp.zoomStep(1 / 1.2)
+      } else if ((e.ctrlKey || e.metaKey) && e.key === '0' && !typing) {
+        e.preventDefault()
+        zp.zoomReset()
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setSelectedStamp])
 
   function removeStampEverywhere(target: string) {
@@ -365,24 +451,62 @@ export default function Stage() {
 
       {doc && !docOk && <div className="stage-error">{doc.error}</div>}
 
-      {rendered && docOk && (
-        <div className="stack-wrap">
+      {docOk && (
+        <div className="zoom-pill">
+          <button title={t('edit.zoomOut')} onClick={() => zp.zoomStep(1 / 1.2)}>
+            −
+          </button>
+          <button className="zoom-value" title={t('edit.zoomReset')} onClick={() => zp.zoomReset()}>
+            {Math.round(zp.zoomDisplay * 100)}%
+          </button>
+          <button title={t('edit.zoomIn')} onClick={() => zp.zoomStep(1.2)}>
+            +
+          </button>
+        </div>
+      )}
+
+      <div className="sign-scroll" {...zp.scrollProps}>
+        {rendered && docOk && (
+          <div
+            className="zoom-sizer"
+            ref={zp.sizerRef}
+            style={{
+              width: rendered.width * zp.pendingScale,
+              height: rendered.height * zp.pendingScale,
+            }}
+          >
+        <div
+          className="stack-wrap"
+          ref={zp.sheetElRef}
+          style={{
+            width: rendered.width,
+            height: rendered.height,
+            transform: zp.pendingScale !== 1 ? `scale(${zp.pendingScale})` : undefined,
+          }}
+        >
           {docs.length > 1 && (
             <>
               <div className="stack-sheet s2" />
               <div className="stack-sheet s1" />
             </>
           )}
-          <div
-            className="sheet"
-            style={{ width: rendered.width, height: rendered.height }}
-            onClick={onSheetClick}
-          >
+          <div className="sheet" style={{ width: rendered.width, height: rendered.height }}>
             <div
               className="canvas-holder"
               ref={(el) => {
                 if (el && rendered) el.replaceChildren(rendered.canvas)
               }}
+            />
+            {/* gesture surface for empty paper (tap places, slide pans). It
+                must be a STABLE element above the canvas: the canvas is
+                replaced on every crisp re-render, and a touch implicitly
+                captured by it would fire lostpointercapture mid-pinch and
+                abort the gesture. Stamps sit above it at z-index 3. */}
+            <div
+              className="sign-overlay"
+              onPointerDown={onSheetPointerDown}
+              onPointerMove={onSheetPointerMove}
+              onPointerUp={onSheetPointerUp}
             />
             {box && signature && doc && (
               <div
@@ -519,7 +643,9 @@ export default function Stage() {
             <div className="stack-badge">{t('stage.stackMore', { count: docs.length - 1 })}</div>
           )}
         </div>
-      )}
+          </div>
+        )}
+      </div>
 
       {confirmRemove && doc && (
         <div className="modal-veil" onClick={() => setConfirmRemove(null)}>
