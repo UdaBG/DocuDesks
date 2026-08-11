@@ -81,6 +81,10 @@ try {
   const ov = await rectOf('.edit-overlay')
 
   // 1. SLIDE with retype tool = pan, NOT a box and NOT a zoom
+  // (start from the top: zoom now lands center-anchored, which may leave too
+  // little downward scroll room for the slide to prove itself)
+  await evaluate(`(document.querySelector('.edit-scroll').scrollTop = 0, true)`)
+  await sleep(120)
   const z0 = await evaluate(`document.querySelector('.zoom-value').textContent`)
   const st0 = await evaluate(`document.querySelector('.edit-scroll').scrollTop`)
   await touch('touchStart', [[ov.x + ov.w * 0.5, ov.y + ov.h * 0.6]])

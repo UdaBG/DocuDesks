@@ -213,6 +213,7 @@ export function useZoomPan(opts: ZoomPanOptions) {
   const zoomResetTo1 = useCallback(() => zoomTo(1), [zoomTo])
 
   /** switching documents: fresh paper starts at fit zoom, scroll at origin */
+  const anchorSuppressRef = useRef(false)
   const resetZoom = useCallback(() => {
     zoomRef.current = 1
     zoomTargetRef.current = 1
@@ -221,6 +222,9 @@ export function useZoomPan(opts: ZoomPanOptions) {
     setZoom(1)
     lastScrollRef.current = { l: 0, t: 0 }
     pendingRestoreRef.current = null
+    // the next crisp render shows DIFFERENT content — anchoring it to
+    // whatever happened to be on screen would be wrong
+    anchorSuppressRef.current = true
   }, [])
 
   /** a rev bump re-opens the same paper — put the scroll position back once
@@ -231,10 +235,50 @@ export function useZoomPan(opts: ZoomPanOptions) {
     }
   }, [])
 
-  /** a crisp render landed — it replaces the interim CSS scale */
+  /**
+   * A crisp render landed — it replaces the interim CSS scale. The commit is
+   * content-anchored: the swap changes the layout (sizer size, margin-auto
+   * centering, scroll clamps), and raw pixel offsets do NOT carry the view
+   * across it — on phones the page visibly snapped toward the left corner
+   * after every pinch. Capture the content point under the viewport center
+   * BEFORE React applies the new view, then put that same point back after
+   * layout. Axes that fit entirely (no overflow) center themselves.
+   */
   const commitRender = useCallback(() => {
+    const el = scrollRef.current
+    const sheet = sheetElRef.current
+    let anchor: { fx: number; fy: number } | null = null
+    if (!anchorSuppressRef.current && el && sheet) {
+      const er = el.getBoundingClientRect()
+      const sr = sheet.getBoundingClientRect()
+      if (er.width > 1 && sr.width > 1 && sr.height > 1) {
+        anchor = {
+          fx: (er.left + er.width / 2 - sr.left) / sr.width,
+          fy: (er.top + er.height / 2 - sr.top) / sr.height,
+        }
+      }
+    }
+    anchorSuppressRef.current = false
     pendingScaleRef.current = 1
     setPendingScale(1)
+    if (!anchor) return
+    // rAF fires after React has applied the new view and the browser has laid
+    // it out — measure the drift the swap introduced and scroll it away
+    requestAnimationFrame(() => {
+      const el2 = scrollRef.current
+      const sheet2 = sheetElRef.current
+      if (!el2 || !sheet2) return
+      // a new gesture superseded this commit — never fight the fingers
+      if (pinchRef.current || Math.abs(zoomTargetRef.current - zoomRef.current) > 0.001) return
+      const er = el2.getBoundingClientRect()
+      const sr = sheet2.getBoundingClientRect()
+      if (sr.width > er.width + 1) {
+        el2.scrollLeft += anchor.fx * sr.width + sr.left - (er.left + er.width / 2)
+      }
+      if (sr.height > er.height + 1) {
+        el2.scrollTop += anchor.fy * sr.height + sr.top - (er.top + er.height / 2)
+      }
+    })
   }, [])
 
   /** deliberate UI action elsewhere (tool change): drop half-tracked gestures */

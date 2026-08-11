@@ -1587,6 +1587,12 @@ input[type='range'] {
 .read-scroll .edit-sheet,
 .sign-scroll .stack-wrap {
   transform-origin: top left;
+  /* the sheet must fill the sizer from its top-left corner: mid-pinch the
+     sizer is CSS-grown while the sheet's LAYOUT size lags one crisp render
+     behind — a margin:auto sheet would center in the grown sizer, showing a
+     phantom gutter the committed layout can't reproduce (the view then
+     "snapped" when the crisp render landed) */
+  margin: 0;
 }
 /* pan surface: one finger or mouse drags the paper, two fingers pinch */
 .read-overlay,
@@ -2300,6 +2306,22 @@ input[type='range'] {
   .lang select {
     padding: 6px 22px 6px 8px;
     font-size: 12px;
+  }
+
+  /* three view segments (Read | Sign | Edit) must still share one row with
+     the brand and the language picker on a 360dp screen */
+  @media (max-width: 380px) {
+    .wordmark {
+      font-size: 20px;
+    }
+    .seg {
+      padding: 6px 7px;
+      font-size: 11.5px;
+    }
+    .lang select {
+      padding: 5px 16px 5px 6px;
+      font-size: 11px;
+    }
   }
 
   /* single pane, switched by the bottom nav */
