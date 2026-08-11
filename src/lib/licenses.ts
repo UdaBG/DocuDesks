@@ -37,6 +37,16 @@ export const ATTRIBUTIONS: Attribution[] = [
     copyright: '© Google Corporation (digitized data), © Red Hat, Inc. — Reserved Font Name "Liberation"',
     license: 'OFL-1.1',
   },
+  {
+    name: 'Carlito',
+    copyright: '© Łukasz Dziedzic — Reserved Font Name "Carlito"',
+    license: 'OFL-1.1',
+  },
+  {
+    name: 'Cousine',
+    copyright: '© Steve Matteson (Ascender Corp.) — Reserved Font Name "Cousine"',
+    license: 'OFL-1.1',
+  },
 ]
 
 const MIT = `MIT License

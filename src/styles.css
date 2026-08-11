@@ -148,6 +148,54 @@ select {
   font-weight: 700;
   font-style: italic;
 }
+@font-face {
+  font-family: 'Carlito';
+  src: url('./assets/fonts/Carlito-Regular.ttf');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Carlito';
+  src: url('./assets/fonts/Carlito-Bold.ttf');
+  font-weight: 700;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Carlito';
+  src: url('./assets/fonts/Carlito-Italic.ttf');
+  font-weight: 400;
+  font-style: italic;
+}
+@font-face {
+  font-family: 'Carlito';
+  src: url('./assets/fonts/Carlito-BoldItalic.ttf');
+  font-weight: 700;
+  font-style: italic;
+}
+@font-face {
+  font-family: 'Cousine';
+  src: url('./assets/fonts/Cousine-Regular.ttf');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Cousine';
+  src: url('./assets/fonts/Cousine-Bold.ttf');
+  font-weight: 700;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Cousine';
+  src: url('./assets/fonts/Cousine-Italic.ttf');
+  font-weight: 400;
+  font-style: italic;
+}
+@font-face {
+  font-family: 'Cousine';
+  src: url('./assets/fonts/Cousine-BoldItalic.ttf');
+  font-weight: 700;
+  font-style: italic;
+}
 
 /* App chrome is an interface, not a web page: long-pressing a label or hint
    on touch screens must not pop Android's text-selection menu. Real inputs

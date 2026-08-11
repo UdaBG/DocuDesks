@@ -7,6 +7,14 @@ import libSerifR from '../assets/fonts/LiberationSerif-Regular.ttf?url'
 import libSerifB from '../assets/fonts/LiberationSerif-Bold.ttf?url'
 import libSerifI from '../assets/fonts/LiberationSerif-Italic.ttf?url'
 import libSerifBI from '../assets/fonts/LiberationSerif-BoldItalic.ttf?url'
+import carlitoR from '../assets/fonts/Carlito-Regular.ttf?url'
+import carlitoB from '../assets/fonts/Carlito-Bold.ttf?url'
+import carlitoI from '../assets/fonts/Carlito-Italic.ttf?url'
+import carlitoBI from '../assets/fonts/Carlito-BoldItalic.ttf?url'
+import cousineR from '../assets/fonts/Cousine-Regular.ttf?url'
+import cousineB from '../assets/fonts/Cousine-Bold.ttf?url'
+import cousineI from '../assets/fonts/Cousine-Italic.ttf?url'
+import cousineBI from '../assets/fonts/Cousine-BoldItalic.ttf?url'
 
 /**
  * Fonts for the text tool.
@@ -122,6 +130,22 @@ const BUNDLED: Record<
     bold: libSerifB,
     italic: libSerifI,
     boldItalic: libSerifBI,
+  },
+  'file:calibri': {
+    label: 'Calibri',
+    css: 'Calibri, Carlito, sans-serif',
+    regular: carlitoR,
+    bold: carlitoB,
+    italic: carlitoI,
+    boldItalic: carlitoBI,
+  },
+  'file:courier-new': {
+    label: 'Courier New',
+    css: '"Courier New", Cousine, monospace',
+    regular: cousineR,
+    bold: cousineB,
+    italic: cousineI,
+    boldItalic: cousineBI,
   },
 }
 
