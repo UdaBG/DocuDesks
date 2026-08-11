@@ -183,6 +183,83 @@ type PickedItem = string | { uri: string; name?: string }
   return true
 }
 
+// Test helper: render a page of a PDF (by path) through the app's exact
+// render pipeline and report how much ink landed on the canvas — used to
+// verify PDFs that once rendered blank (shared-image/CCITT regressions).
+;(window as unknown as Record<string, unknown>).__renderProbe = async (
+  path: string,
+  pageIndex = 0,
+  extra?: Record<string, unknown>,
+) => {
+  const { openPdf, renderPage } = await import('./lib/pdf')
+  const bytes = new Uint8Array(await window.signer.readFile(path))
+  const { doc, close } = await openPdf(bytes, extra)
+  try {
+    const { canvas } = await renderPage(doc, pageIndex, 800, 1100, 2)
+    const g = canvas.getContext('2d')!
+    const d = g.getImageData(0, 0, canvas.width, canvas.height).data
+    let ink = 0
+    let total = 0
+    for (let i = 0; i < d.length; i += 40) {
+      total++
+      if (d[i] < 240) ink++
+    }
+    return { w: canvas.width, h: canvas.height, inkPct: Math.round((ink / total) * 1000) / 10 }
+  } finally {
+    await close()
+  }
+}
+
+// Debug helper: operator-level look at a page that renders blank — which
+// image ops exist, whether their objects ever resolve, and what a print-intent
+// render does differently.
+;(window as unknown as Record<string, unknown>).__pdfDebugProbe = async (path: string, pageIndex = 0) => {
+  const pdfjs = await import('pdfjs-dist')
+  const { openPdf } = await import('./lib/pdf')
+  const bytes = new Uint8Array(await window.signer.readFile(path))
+  const { doc, close } = await openPdf(bytes)
+  try {
+    const page = await doc.getPage(pageIndex + 1)
+    const ops = await page.getOperatorList()
+    const hist: Record<string, number> = {}
+    const opName = (fn: number) =>
+      Object.entries(pdfjs.OPS).find(([, v]) => v === fn)?.[0] ?? String(fn)
+    const images: { op: string; objId: string; resolved: boolean }[] = []
+    for (let i = 0; i < ops.fnArray.length; i++) {
+      const name = opName(ops.fnArray[i])
+      hist[name] = (hist[name] ?? 0) + 1
+      if (name.startsWith('paintImage') || name === 'dependency') {
+        const arg = ops.argsArray[i]
+        const objId = Array.isArray(arg) ? String(arg[0]) : String(arg)
+        let resolved = false
+        try {
+          resolved = (page.objs as unknown as { has(id: string): boolean }).has(objId)
+        } catch {
+          resolved = false
+        }
+        images.push({ op: name, objId, resolved })
+      }
+    }
+    // a print-intent render for comparison
+    const vp = page.getViewport({ scale: 0.5 })
+    const canvas = document.createElement('canvas')
+    canvas.width = vp.width
+    canvas.height = vp.height
+    const g = canvas.getContext('2d')!
+    await page.render({ canvas, canvasContext: g, viewport: vp, intent: 'print' }).promise
+    const d = g.getImageData(0, 0, canvas.width, canvas.height).data
+    let ink = 0
+    let total = 0
+    for (let i = 0; i < d.length; i += 40) {
+      total++
+      if (d[i] < 240) ink++
+    }
+    return { hist, images: images.slice(0, 10), printInkPct: Math.round((ink / total) * 1000) / 10 }
+  } finally {
+    await close()
+  }
+}
+
 // Test helper: build a PDF with a vertically-rotated label (like a table
 // header) so the vertical-retype regression has a deterministic input.
 ;(window as unknown as Record<string, unknown>).__makeVerticalPdf = async (label: string) => {

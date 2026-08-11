@@ -21,8 +21,24 @@ export interface OpenedPdf {
  * Open a PDF with pdf.js. pdf.js transfers the buffer to its worker, so we
  * always hand it a copy and keep the original bytes untouched.
  */
-export async function openPdf(bytes: Uint8Array): Promise<OpenedPdf> {
-  const task = pdfjs.getDocument({ data: bytes.slice(), worker: sharedWorker })
+export async function openPdf(
+  bytes: Uint8Array,
+  extra?: Record<string, unknown>,
+): Promise<OpenedPdf> {
+  const task = pdfjs.getDocument({
+    data: bytes.slice(),
+    worker: sharedWorker,
+    // pdf.js v6 decodes JBIG2/CCITT-fax and JPEG2000 images through wasm
+    // modules it fetches from here (the JS fallbacks resolve against the same
+    // base). Without it those decodes fail SILENTLY in the worker and scanned
+    // pages render blank — the only symptom is a "Dependent image isn't ready
+    // yet" warning at paint time. Bundled like the ocr/ and qpdf/ assets;
+    // wasmUrl is a directory prefix, so it cannot carry a ?v= cache-buster —
+    // fine on our platforms (file:// and intercepted tauri.localhost responses
+    // bypass the HTTP cache).
+    wasmUrl: new URL('pdfjs-wasm/', document.baseURI).href,
+    ...extra,
+  })
   const doc = await task.promise
   return {
     doc,
