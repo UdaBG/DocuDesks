@@ -59,13 +59,21 @@ await sleep(800)
 
 const before = await evaluate(`document.querySelector('.zoom-sizer').getBoundingClientRect().width`)
 const center = await evaluate(`(() => { const r = document.querySelector('.edit-scroll').getBoundingClientRect(); return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) } })()`)
-const res = await send('Input.synthesizePinchGesture', {
-  x: center.x,
-  y: center.y,
-  scaleFactor: 1.6,
-  relativeSpeed: 400,
-})
-if (res.error) console.log('pinch synth error:', JSON.stringify(res.error))
+// WebView2's CDP acknowledges Input.synthesizePinchGesture but delivers no
+// input events at all (pinch-probe2 instruments this). Windows trackpads
+// really deliver a pinch as fine-grained ctrl+wheel, so dispatch exactly
+// that through the trusted input pipeline — the path the app handles.
+for (let i = 0; i < 10; i++) {
+  await send('Input.dispatchMouseEvent', {
+    type: 'mouseWheel',
+    x: center.x,
+    y: center.y,
+    deltaX: 0,
+    deltaY: -50,
+    modifiers: 2, // Ctrl
+  })
+  await sleep(30)
+}
 await sleep(900)
 const after = await evaluate(`document.querySelector('.zoom-sizer').getBoundingClientRect().width`)
 const zoomVal = await evaluate(`document.querySelector('.zoom-pill .zoom-value').textContent`)

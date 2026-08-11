@@ -206,15 +206,27 @@ terminal (browser re-auth); after that scripted pushes work again. Verify
 sync (`git ls-remote origin -h refs/heads/main`) before releasing.
 
 `pinch-probe.mjs` / `pinch-probe2.mjs` run `src-tauri/target/release/
-signer.exe` — rebuild Lite first or they test a stale binary. probe1
-(synthesized pinch) failed against the July-25 exe while probe2 (raw touch)
-passed; re-check after the next `npm run dist:tauri`.
+signer.exe` — rebuild Lite first (`npm run dist:tauri`) or they test a stale
+binary. probe1 now dispatches trusted ctrl+wheel bursts (what Windows
+trackpads really send): WebView2's CDP acknowledges
+`Input.synthesizePinchGesture` but delivers NO events — never use it.
 
-**NEXT: 1.2.0 closed-track build + release train**: APK (sideload key, user
-verifies Read mode on device) + AAB (upload key → `play-artifacts/`, Play
-Console closed track — testers verify, then promote to production; no
-14-day wait, that requirement is already met) + both Windows installers +
-GitHub stable release (blocked on the manual push above).
+**Read mode also composites signature stamps** (`finalizedBytesFor` is the
+read preview builder): Edit shows your objects, Sign shows edits + live
+stamps, Read shows the final paper. One canvas, three views, one output.
+
+**1.2.0 artifacts BUILT (2026-08-11), all battery green** — ready to ship:
+- `release/DocuDesk-Setup-1.2.0.exe` (Electron full, signed)
+- `src-tauri/target/release/bundle/nsis/DocuDesk Lite_1.2.0_x64-setup.exe`
+- `.../apk/universal/release/DocuDesk_Lite_1.2.0_arm64-signed.apk`
+  (verified `CN=Signer Local` — sideload/update-safe)
+- `play-artifacts/DocuDesk-1.2.0-play.aab` (verified `CN=DocuDesk`, committed)
+
+**NEXT**: user pushes (see above), sideload-tests the APK (Read mode
+on-device checklist), uploads the AAB to the Play closed track (testers
+verify → promote to production; no 14-day wait, already met), then GitHub
+release: pre-release first if tester feedback is pending, stable once
+confirmed (3 public assets: both setups + arm64 APK; AAB stays out).
 
 Backlog (post-launch 1.2.x/1.3): open user-password PDFs (qpdf `--password`),
 encrypt-on-save (qpdf `--encrypt`), performance pass (need tester specifics),
