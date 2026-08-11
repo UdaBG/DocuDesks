@@ -60,6 +60,7 @@ const S = `window.__signerStore.getState()`
 try {
   await send('Page.enable')
   await waitFor(`!!window.__signerStore`, 'store')
+  await evaluate(`(${S}.setView('sign'), true)`) // the app now opens in Read; the jump is sign-view behavior
 
   // ---- 1. budgeted OCR: 5-page scan, signature on the LAST page ------------
   await evaluate(`(async () => {

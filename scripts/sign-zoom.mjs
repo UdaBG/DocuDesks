@@ -84,6 +84,7 @@ try {
   await send('Page.enable')
   await waitFor(`!!window.__signerStore`, 'store')
   await waitFor(`${S}.docs.length >= 1`, 'doc loaded')
+  await evaluate(`(${S}.setView('sign'), true)`) // the app now opens in Read
   await evaluate(`(() => {
     const c = document.createElement('canvas'); c.width = 400; c.height = 200
     const ctx = c.getContext('2d'); ctx.strokeStyle = '#26357c'; ctx.lineWidth = 8; ctx.lineCap = 'round'

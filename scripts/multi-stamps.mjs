@@ -78,6 +78,7 @@ const clickSheet = (fx, fy) => `(() => {
 await send('Page.enable')
 await waitFor(`!!window.__signerStore`, 'store')
 await waitFor(`${S()}.docs.length >= 1`, 'doc')
+await evaluate(`(${S()}.setView('sign'), true)`) // the app now opens in Read
 await evaluate(`(${S()}.duplicateDoc(${S()}.docs[0].id), true)`)
 await waitFor(`${S()}.docs.length === 2`, 'two docs')
 const [docA, docB] = await evaluate(`${S()}.docs.map(d => d.id)`)

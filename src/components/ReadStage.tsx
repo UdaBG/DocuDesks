@@ -59,6 +59,7 @@ export default function ReadStage() {
     getSheetSize: () => (viewRef.current ? { W: viewRef.current.W, H: viewRef.current.H } : null),
     spaceW: space.w,
     view,
+    memoryKey: doc?.id,
   })
 
   useEffect(() => {
@@ -80,16 +81,15 @@ export default function ReadStage() {
     [],
   )
 
-  // fit-zoom resets when SWITCHING documents; a rev bump on the same doc
-  // (Apply to stack, unlock) re-opens the same paper — the user's zoom stays
-  // and the scroll position is put back once the fresh render lands
+  // document switches are handled by the hook's view memory (memoryKey); a
+  // rev bump on the same doc re-opens the same paper — the scroll position
+  // is put back once the fresh render lands
   const docKey = doc ? `${doc.id}:${doc.rev}` : ''
   const prevDocIdRef = useRef('')
   useEffect(() => {
     const idChanged = prevDocIdRef.current !== (doc?.id ?? '')
     prevDocIdRef.current = doc?.id ?? ''
-    if (idChanged) zp.resetZoom()
-    else zp.queueScrollRestore()
+    if (!idChanged) zp.queueScrollRestore()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docKey])
 

@@ -79,21 +79,22 @@ export default function Stage() {
         : null,
     spaceW: space.w,
     view: rendered,
+    memoryKey: doc?.id,
     onPinchStart: () => {
       // second finger: this is a zoom, not a stamp drag
       dragRef.current = null
     },
   })
 
-  // fit-zoom resets when SWITCHING documents; a rev bump on the same doc
-  // (Apply to stack, unlock) keeps the user's zoom and puts the scroll back
+  // document switches are handled by the hook's view memory (memoryKey); a
+  // rev bump on the same doc (Apply to stack, unlock) keeps the user's zoom
+  // and puts the scroll back once the fresh render lands
   const docKey = doc ? `${doc.id}:${doc.rev}` : ''
   const prevDocIdRef = useRef('')
   useEffect(() => {
     const idChanged = prevDocIdRef.current !== (doc?.id ?? '')
     prevDocIdRef.current = doc?.id ?? ''
-    if (idChanged) zp.resetZoom()
-    else zp.queueScrollRestore()
+    if (!idChanged) zp.queueScrollRestore()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docKey])
 

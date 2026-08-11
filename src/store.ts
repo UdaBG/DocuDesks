@@ -181,7 +181,8 @@ export const useApp = create<AppState>((set, get) => ({
   signatures: [],
   activeSignatureId: null,
   mode: 'manual',
-  view: 'sign',
+  // the app opens as a reader — signing and editing are one tap away
+  view: 'read',
   placement: DEFAULT_PLACEMENT,
   previewPage: 0,
   detecting: false,
@@ -355,14 +356,21 @@ export const useApp = create<AppState>((set, get) => ({
       }
     }
     if (!added.length) return
+    const prevSelected = get().selectedDocId
     set((s) => ({
       docs: [...s.docs, ...added],
       selectedDocId: s.selectedDocId ?? added.find((d) => d.status !== 'error')?.id ?? null,
       result: null,
     }))
-    const { selectedDocId, docs, mode, placement } = get()
+    const { selectedDocId, docs, mode, placement, view } = get()
     const sel = docs.find((d) => d.id === selectedDocId)
-    if (sel) set({ previewPage: resolvePageIndex(placement, sel.pageCount) })
+    if (sel) {
+      // signing keeps jumping to the placement page; the reader starts a
+      // newly selected document at page 1 and never yanks the page away
+      // from a document the user is already looking at
+      if (view === 'sign') set({ previewPage: resolvePageIndex(placement, sel.pageCount) })
+      else if (selectedDocId !== prevSelected) set({ previewPage: 0 })
+    }
     if (mode === 'smart') await runDetection(set, get)
   },
 
@@ -484,11 +492,13 @@ export const useApp = create<AppState>((set, get) => ({
   },
 
   selectDoc(id) {
-    const { docs, mode, placement } = get()
+    const { docs, mode, placement, view } = get()
     const doc = docs.find((d) => d.id === id)
     if (!doc) return
+    // signing jumps to where the signature goes; reading/editing a freshly
+    // selected document starts at its first page
     const pl = effectivePlacement(doc, mode, placement)
-    const page = pl ? resolvePageIndex(pl, doc.pageCount) : 0
+    const page = view === 'sign' && pl ? resolvePageIndex(pl, doc.pageCount) : 0
     set({ selectedDocId: id, previewPage: page, selectedStampId: null })
   },
 
@@ -841,7 +851,8 @@ async function runDetection(
         smart,
         status: smart || doc.override ? 'ready' : 'no-target',
       })
-      if (doc.id === get().selectedDocId && smart) {
+      // show the found spot — but never yank the page from under a reader
+      if (doc.id === get().selectedDocId && smart && get().view === 'sign') {
         set({ previewPage: resolvePageIndex(smart, doc.pageCount) })
       }
     }

@@ -101,6 +101,7 @@ try {
     'documents loaded',
   )
   console.log('docs loaded:', docCount)
+  await evaluate(`(window.__signerStore.getState().setView('sign'), true)`) // the app now opens in Read
   await sleep(800) // let the first preview render
   await screenshot('01-loaded.png')
 

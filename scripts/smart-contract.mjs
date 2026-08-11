@@ -66,6 +66,7 @@ try {
     return true
   })()`)
   await waitFor(`${S}.docs.length === 1`, 'doc added')
+  await evaluate(`(${S}.setView('sign'), true)`) // the app now opens in Read; the hint lives in Sign
   const docId = await evaluate(`${S}.docs[0].id`)
   await evaluate(`(${S}.setMode('smart'), true)`)
   await waitFor(`${S}.docs[0].smart !== undefined && !${S}.detecting`, 'detection done', 60000)

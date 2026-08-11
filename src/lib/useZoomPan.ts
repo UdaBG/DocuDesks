@@ -26,11 +26,23 @@ export interface ZoomPanOptions {
   spaceW: number
   /** the rendered view (or null) — identity changes when a fresh render lands */
   view: unknown
+  /**
+   * Continuity key, normally the document id. The zoom level and the content
+   * point at the viewport center are remembered per key in a module-level
+   * store shared by ALL stages — switching Read → Sign → Edit (each its own
+   * hook instance) or hopping between documents resumes exactly where that
+   * document was left. Omit to opt out.
+   */
+  memoryKey?: string
   minZoom?: number
   maxZoom?: number
   /** a second finger landed — abort any in-progress tool gesture */
   onPinchStart?: () => void
 }
+
+/** zoom + viewport-center content point, remembered per document across the
+ *  Read/Sign/Edit stages (content fractions survive differing fit sizes) */
+const viewMemory = new Map<string, { zoom: number; fx: number; fy: number }>()
 
 /**
  * The canvas zoom/pan/pinch machinery shared by the Edit, Sign and Read
@@ -51,7 +63,7 @@ export interface ZoomPanOptions {
  * exposed so tool handlers can integrate exactly like EditStage always did.
  */
 export function useZoomPan(opts: ZoomPanOptions) {
-  const { spaceW, view } = opts
+  const { spaceW, view, memoryKey } = opts
   const minZoom = opts.minZoom ?? 0.5
   const maxZoom = opts.maxZoom ?? 4
   // options read inside stable callbacks/effects go through refs
@@ -70,9 +82,10 @@ export function useZoomPan(opts: ZoomPanOptions) {
   /** touchscreen two-finger pinch+pan (trackpads arrive as ctrl+wheel instead) */
   const touchesRef = useRef(new Map<number, { x: number; y: number }>())
   const pinchRef = useRef<{ d0: number; z0: number; c: { x: number; y: number } } | null>(null)
-  const [zoom, setZoom] = useState(1) // committed zoom — crisp render
-  const zoomRef = useRef(1)
-  const zoomTargetRef = useRef(1)
+  // committed zoom — crisp render. A remembered document resumes its zoom.
+  const [zoom, setZoom] = useState(() => (memoryKey && viewMemory.get(memoryKey)?.zoom) || 1)
+  const zoomRef = useRef(zoom)
+  const zoomTargetRef = useRef(zoom)
   /** interim CSS scale during a gesture (target / committed) — 60fps feedback */
   const [pendingScale, setPendingScale] = useState(1)
   const pendingScaleRef = useRef(1)
@@ -80,18 +93,42 @@ export function useZoomPan(opts: ZoomPanOptions) {
   /** text/retype/stamp: a clean tap acts, a slide pans */
   const tapRef = useRef<TapState | null>(null)
 
-  // track the live scroll position natively; the browser can fire a stray
+  /** live content point under the viewport center — kept fresh on every
+   *  scroll because unmount cleanups run AFTER React nulls the DOM refs, so
+   *  the view memory cannot measure anything when the stage is leaving */
+  const lastCenterRef = useRef<{ fx: number; fy: number } | null>(null)
+
+  // Track the live scroll position natively; the browser can fire a stray
   // scroll-to-0 when the container regains its box, so restores use a
-  // snapshot taken at the moment the stage reappears
-  useEffect(() => {
+  // snapshot taken at the moment the stage reappears. The listener rides a
+  // CALLBACK ref: a mount-time effect would miss the container entirely when
+  // the stage first renders its empty state (no document yet) and the
+  // element only appears later.
+  const handleScroll = useCallback(() => {
     const el = scrollRef.current
-    if (!el) return
-    const onScroll = () => {
-      if (el.offsetParent) lastScrollRef.current = { l: el.scrollLeft, t: el.scrollTop }
+    if (!el || !el.offsetParent) return
+    lastScrollRef.current = { l: el.scrollLeft, t: el.scrollTop }
+    const sheet = sheetElRef.current
+    if (sheet) {
+      const er = el.getBoundingClientRect()
+      const sr = sheet.getBoundingClientRect()
+      if (er.width > 1 && sr.width > 1 && sr.height > 1) {
+        lastCenterRef.current = {
+          fx: (er.left + er.width / 2 - sr.left) / sr.width,
+          fy: (er.top + er.height / 2 - sr.top) / sr.height,
+        }
+      }
     }
-    el.addEventListener('scroll', onScroll, { passive: true })
-    return () => el.removeEventListener('scroll', onScroll)
   }, [])
+  const setScrollEl = useCallback(
+    (el: HTMLDivElement | null) => {
+      if (scrollRef.current === el) return
+      scrollRef.current?.removeEventListener('scroll', handleScroll)
+      scrollRef.current = el
+      el?.addEventListener('scroll', handleScroll, { passive: true })
+    },
+    [handleScroll],
+  )
 
   // coming back from another mobile tab: the stage was display:none, which
   // zeroed the scroll offsets while zoom survived — put the view back once
@@ -107,15 +144,34 @@ export function useZoomPan(opts: ZoomPanOptions) {
       pendingRestoreRef.current = { ...lastScrollRef.current }
     }
   }, [spaceW])
+  /** content point to center once the next render lands (view-memory restore) */
+  const pendingCenterRef = useRef<{ fx: number; fy: number } | null>(null)
   useEffect(() => {
     const target = pendingRestoreRef.current
-    if (!target || !view) return
+    const center = pendingCenterRef.current
+    if ((!target && !center) || !view) return
     pendingRestoreRef.current = null
+    pendingCenterRef.current = null
     requestAnimationFrame(() => {
       const el = scrollRef.current
-      if (el) {
+      if (!el) return
+      if (target) {
+        // exact pixel restore (same layout as before, e.g. rev bump)
         el.scrollLeft = target.l
         el.scrollTop = target.t
+        return
+      }
+      // content-fraction restore (layout may differ between stages)
+      const sheet = sheetElRef.current
+      if (!sheet || !center) return
+      const er = el.getBoundingClientRect()
+      const sr = sheet.getBoundingClientRect()
+      if (er.width < 2 || sr.width < 2) return
+      if (sr.width > er.width + 1) {
+        el.scrollLeft += center.fx * sr.width + sr.left - (er.left + er.width / 2)
+      }
+      if (sr.height > er.height + 1) {
+        el.scrollTop += center.fy * sr.height + sr.top - (er.top + er.height / 2)
       }
     })
   }, [view])
@@ -227,6 +283,40 @@ export function useZoomPan(opts: ZoomPanOptions) {
     anchorSuppressRef.current = true
   }, [])
 
+  // Per-document continuity: entering a stage (or switching documents inside
+  // one) resumes the zoom and viewport-center point that document last had in
+  // ANY stage; leaving saves them. A document never seen before starts fresh.
+  useEffect(() => {
+    if (!memoryKey) return
+    const mem = viewMemory.get(memoryKey)
+    anchorSuppressRef.current = true
+    if (mem) {
+      zoomRef.current = mem.zoom
+      zoomTargetRef.current = mem.zoom
+      pendingScaleRef.current = 1
+      setPendingScale(1)
+      setZoom(mem.zoom)
+      pendingRestoreRef.current = null
+      pendingCenterRef.current = { fx: mem.fx, fy: mem.fy }
+      lastCenterRef.current = { fx: mem.fx, fy: mem.fy }
+    } else {
+      resetZoom()
+      lastCenterRef.current = null
+    }
+    return () => {
+      // NOTE: on unmount this runs after React nulls the DOM refs — only the
+      // continuously-tracked values are trustworthy here
+      const c = lastCenterRef.current
+      const prev = viewMemory.get(memoryKey)
+      viewMemory.set(memoryKey, {
+        zoom: zoomTargetRef.current,
+        fx: c?.fx ?? prev?.fx ?? 0.5,
+        fy: c?.fy ?? prev?.fy ?? 0,
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [memoryKey])
+
   /** a rev bump re-opens the same paper — put the scroll position back once
    *  the fresh render lands */
   const queueScrollRestore = useCallback(() => {
@@ -321,7 +411,7 @@ export function useZoomPan(opts: ZoomPanOptions) {
   // handlers for the scroll container. Capture phase tracks raw touches for
   // the pinch; bubble phase does middle-button + tool-initiated panning.
   const scrollProps = {
-    ref: scrollRef,
+    ref: setScrollEl,
     onPointerDownCapture: (e: React.PointerEvent) => {
       if (e.pointerType !== 'touch') return
       touchesRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })

@@ -469,6 +469,7 @@ export default function EditStage() {
     getSheetSize: () => (viewRef.current ? { W: viewRef.current.W, H: viewRef.current.H } : null),
     spaceW: space.w,
     view,
+    memoryKey: doc?.id,
     onPinchStart: () => {
       // second finger: abort any tool gesture
       gestureRef.current = null
@@ -479,6 +480,32 @@ export default function EditStage() {
   useEffect(() => {
     if (doc && doc.status !== 'error') openSession(doc)
   }, [doc, openSession])
+
+  // Entering Edit continues on the page you were viewing in Read/Sign;
+  // leaving the stage hands the current page back so the other views stay in
+  // step. Blank pages inserted in Edit have no counterpart outside it.
+  const pageSyncRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!doc || !session || pageSyncRef.current === doc.id) return
+    pageSyncRef.current = doc.id
+    const pv = useApp.getState().previewPage
+    const at = session.pages.findIndex((pg) => pg.src.type === 'orig' && pg.src.index === pv)
+    if (at >= 0 && at !== session.pageIndex) useEdit.getState().setPageIndex(doc.id, at)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doc?.id, !!session])
+  useEffect(() => {
+    const docId = doc?.id
+    if (!docId) return
+    return () => {
+      // switching documents inside Edit must not drag the old page along —
+      // only a true exit (view switch/unmount) reports back
+      if (useApp.getState().selectedDocId !== docId) return
+      const sess = useEdit.getState().sessions[docId]
+      const pg = sess?.pages[sess.pageIndex]
+      if (pg?.src.type === 'orig') useApp.getState().setPreviewPage(pg.src.index)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doc?.id])
 
   useEffect(() => {
     const el = spaceRef.current
@@ -506,15 +533,14 @@ export default function EditStage() {
   const pageRef = session?.pages[session.pageIndex]
   const docKey = doc ? `${doc.id}:${doc.rev}` : ''
 
-  // fit-zoom resets when SWITCHING documents; a rev bump on the same doc
-  // (Apply to stack, unlock) re-opens the same paper — the user's zoom stays
-  // and the scroll position is put back once the fresh render lands
+  // document switches are handled by the hook's view memory (memoryKey); a
+  // rev bump on the same doc (Apply to stack, unlock) re-opens the same
+  // paper — the scroll position is put back once the fresh render lands
   const prevDocIdRef = useRef('')
   useEffect(() => {
     const idChanged = prevDocIdRef.current !== (doc?.id ?? '')
     prevDocIdRef.current = doc?.id ?? ''
-    if (idChanged) zp.resetZoom()
-    else zp.queueScrollRestore()
+    if (!idChanged) zp.queueScrollRestore()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docKey])
 
