@@ -133,6 +133,8 @@ node scripts/edit-shot.mjs / edit-shot2.mjs / edit-shot3.mjs   # edit flows
 node scripts/ocr-scan.mjs           # scanned-doc retype via OCR
 node scripts/vertical-retype.mjs    # rotated text end-to-end
 node scripts/retype-fixes.mjs, gesture-heal.mjs, mobile-edit-fixes.mjs, pinch-probe*.mjs  # gestures
+node scripts/read-mode.mjs          # Read view: chrome-free, zoom, page nav, edits composite
+node scripts/sign-zoom.mjs          # Sign canvas: tap-vs-slide, crisp zoom, stamp drag 1:1
 node scripts/smart-letters.mjs, smart-contract.mjs             # detection
 node scripts/edit-sign-merge.mjs, edit-save-signature.mjs      # sign+edit merge
 node scripts/multi-stamps.mjs, annot-cover.mjs, cover-color.mjs
@@ -142,7 +144,7 @@ node scripts/typing-space.mjs, unlock-longname.mjs             # phone layout
 node scripts/update-data.mjs        # old-version data survives updates
 node scripts/wasm-assets.mjs        # pdf.js wasm decoders present + fetchable
 node scripts/licenses-check.mjs, blank-undo.mjs, pages-drag.mjs, color-chip.mjs
-node scripts/check-i18n.mjs         # locale consistency (213 keys)
+node scripts/check-i18n.mjs         # locale consistency (214 keys)
 ```
 
 Diagnostics (take a path arg): `probe-pdf-render.mjs` (render any PDF, ink %),
@@ -170,7 +172,7 @@ open-with/share-sheet intake. `play-artifacts/DocuDesk-1.1.1-play.aab`.
 **Launch scope decision**: ship the closed-test feedback fixes + Read mode
 before the production release (user chose "Fixes + Read mode").
 
-Feedback fixes DONE today (each with its own commit + regression script):
+Feedback fixes DONE (each with its own commit + regression script):
 1. Blank fax-scan PDFs → bundled `public/pdfjs-wasm/` + `wasmUrl` (also fixes
    OCR on such scans; pdfjs-dist bumped to 6.2.108)
 2. Apply-to-stack keeps zoom/scroll/page (`apply-keeps-view.mjs`)
@@ -178,27 +180,41 @@ Feedback fixes DONE today (each with its own commit + regression script):
 4. Smart detect: last-page bias fixed + "Detect again" (`smart-contract.mjs`)
 5. Tool hints: name + action for all 8 tools ×6 locales (`tool-hints.mjs`)
 
-**⚠ UNPUSHED**: ~8 commits are LOCAL ONLY — the user's GitHub token expired.
-They must run `git push origin main` once in their own terminal (browser
-re-auth); after that scripted pushes work again. Verify sync before releasing.
+**Read mode + shared canvas: DONE** (3 commits, full battery green):
+1. `useZoomPan` hook (`src/lib/useZoomPan.ts`) — EditStage's zoom/pan/pinch/
+   tap machinery extracted verbatim; Edit consumes it, behavior identical.
+2. **Read view** (`src/components/ReadStage.tsx`) — Read | Sign | Edit toggle;
+   chrome-free reader (no panels/action bar), composites unsaved edits, page
+   nav (pill + arrow keys), 2-tab mobile nav with tools-tab guard. Android
+   open-with lands in Read (mobile only — `isMobileTauri()` gate in store
+   init); i18n `view.read` ×6 (214 keys). Regression: `read-mode.mjs`.
+3. **Sign view on the canvas** — zoom/pan before signing; tap-vs-slide on
+   empty paper (tap places on pointerup, slide pans), stamp drag ÷
+   pendingScale mid-pinch. ⚠ The `.sign-overlay` div is LOAD-BEARING: pdf.js
+   re-renders replace the canvas node, and a touch implicitly captured by a
+   replaced canvas fires lostpointercapture → self-heal kills the pinch (this
+   bug cost a debugging session; Edit/Read overlays dodge it by design).
+   `multi-stamps.mjs` now taps via pointer events. Regression: `sign-zoom.mjs`.
 
-**NEXT TASK (the big one): Read mode + shared canvas** (#1 tester request):
-- Extract EditStage's zoom/pan/pinch/tap machinery into a reusable hook/module
-  (`useZoomPan` or similar): committed zoom + pendingScale CSS interim, pinch
-  center math, window-level pointer release self-heal, scroll preserve/restore,
-  settle timer. Behavior must be pixel-identical in Edit afterwards.
-- New **View/Read mode** for pure reading (fast open, canvas nav, no tools) —
-  this is also the "default PDF app" experience for Android open-with.
-- **Sign view adopts the canvas** (zoom/pan before signing): reconcile stamp
-  drag vs paper pan (tap-a-stamp moves/selects, drag-empty-paper pans — mirror
-  the edit view's tap-vs-slide logic).
-- Then: full gesture battery + new read-mode tests + closed-track build for
-  tester verification (no 14-day wait — that requirement is already met).
+Versions bumped to **1.2.0** (versionCode 1002000) in both files. Beware:
+PowerShell `Set-Content -Encoding utf8` writes a BOM that breaks vite's
+JSON.parse of package.json — write JSON with `UTF8Encoding($false)`.
 
-After Read mode: release train as **1.2.0** (digits sum 3): APK (sideload
-key) + AAB (upload key → `play-artifacts/`, Play Console) + both Windows
-installers + GitHub stable release; user publishes to production when access
-is granted.
+**⚠ UNPUSHED**: all commits since `c5f4d96` are LOCAL ONLY — the user's
+GitHub token expired. They must run `git push origin main` once in their own
+terminal (browser re-auth); after that scripted pushes work again. Verify
+sync (`git ls-remote origin -h refs/heads/main`) before releasing.
+
+`pinch-probe.mjs` / `pinch-probe2.mjs` run `src-tauri/target/release/
+signer.exe` — rebuild Lite first or they test a stale binary. probe1
+(synthesized pinch) failed against the July-25 exe while probe2 (raw touch)
+passed; re-check after the next `npm run dist:tauri`.
+
+**NEXT: 1.2.0 closed-track build + release train**: APK (sideload key, user
+verifies Read mode on device) + AAB (upload key → `play-artifacts/`, Play
+Console closed track — testers verify, then promote to production; no
+14-day wait, that requirement is already met) + both Windows installers +
+GitHub stable release (blocked on the manual push above).
 
 Backlog (post-launch 1.2.x/1.3): open user-password PDFs (qpdf `--password`),
 encrypt-on-save (qpdf `--encrypt`), performance pass (need tester specifics),
