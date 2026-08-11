@@ -182,6 +182,40 @@ try {
   if (before < 200) fail(`page unexpectedly dark before edit: ${before}`)
   if (after > 60) fail(`edit not composited into read preview: ${after}`)
   await evaluate(`(window.__editStore.getState().removeObject(${S}.docs[0].id, 'read-test-rect'), true)`)
+  await waitFor(`(() => { const c = document.querySelector('.read-stage canvas'); if (!c) return false
+    const d = c.getContext('2d').getImageData(Math.floor(c.width/2), Math.floor(c.height/2), 1, 1).data
+    return d[0] > 200 })()`, 'edit removed from preview', 15000)
+
+  // ---- 5b. placed signature stamps show in the reader -----------------------
+  // dark-pixel share of the band where the stamp will land
+  const stampInk = () => evaluate(`(() => {
+    const c = document.querySelector('.read-stage canvas')
+    const x = Math.floor(c.width * 0.35), w = Math.floor(c.width * 0.3)
+    const y = Math.floor(c.height * 0.58), h = Math.floor(c.height * 0.2)
+    const d = c.getContext('2d').getImageData(x, y, w, h).data
+    let dark = 0, n = 0
+    for (let i = 0; i < d.length; i += 16) { if ((d[i] + d[i + 1] + d[i + 2]) / 3 < 120) dark++; n++ }
+    return dark / n
+  })()`)
+  const inkBefore = await stampInk()
+  await evaluate(`(() => {
+    const c = document.createElement('canvas'); c.width = 400; c.height = 200
+    const ctx = c.getContext('2d'); ctx.strokeStyle = '#1a2a6c'; ctx.lineWidth = 24; ctx.lineCap = 'round'
+    ctx.beginPath(); ctx.moveTo(30, 160); ctx.bezierCurveTo(120, 10, 240, 190, 370, 40); ctx.stroke()
+    ${S}.addSignature({ name: 'Read Stamp', dataUrl: c.toDataURL('image/png'), width: 400, height: 200 })
+    ${S}.addExtraStamp({ x: 0.35, yb: 0.75, w: 0.3 })
+    return true
+  })()`)
+  const stampId = await evaluate(`${S}.extraStamps[0].id`)
+  let inkAfter = inkBefore
+  for (let i = 0; i < 40 && inkAfter <= inkBefore + 0.01; i++) {
+    await sleep(400)
+    inkAfter = await stampInk()
+  }
+  console.log('stamp band dark share:', inkBefore.toFixed(4), '->', inkAfter.toFixed(4))
+  if (inkAfter <= inkBefore + 0.01) fail('placed stamp does not show in the read preview')
+  await shot('r03-read-stamp.png')
+  await evaluate(`(${S}.removeExtraStampEverywhere('${stampId}'), true)`)
   await sleep(800)
 
   // ---- 6. phone: two tabs, pinch zoom, one-finger pan ----------------------

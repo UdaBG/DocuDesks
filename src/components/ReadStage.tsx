@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useApp, sessionHasEdits } from '../store'
+import { useApp, finalizedBytesFor } from '../store'
 import { useEdit } from '../editor/editStore'
-import { buildEditedPdf } from '../editor/exportPdf'
 import { openPdf, renderPage, type OpenedPdf } from '../lib/pdf'
 import { useZoomPan } from '../lib/useZoomPan'
 import { ChevronLeftIcon, ChevronRightIcon, NibIcon, PlusIcon } from './icons'
@@ -21,7 +20,8 @@ interface ReadView {
  * Read mode: the document and nothing else. No tools, no panels — just the
  * shared canvas (pinch/wheel zoom, pan, page navigation). This is also the
  * "default PDF app" experience Android lands in for "Open with DocuDesk".
- * Shows exactly what saving would produce: unsaved edits are composited in.
+ * Shows exactly what saving would produce: unsaved edits AND the placed
+ * signature stamps are composited in (same builder as every save path).
  */
 export default function ReadStage() {
   const { t } = useTranslation()
@@ -34,6 +34,13 @@ export default function ReadStage() {
   const doc = docs.find((d) => d.id === selectedDocId)
   const docOk = !!doc && doc.status !== 'error'
   const editSession = useEdit((s) => (doc ? s.sessions[doc.id] : undefined))
+  // stamp state — the preview rebuilds when the signature setup changes
+  const mode = useApp((s) => s.mode)
+  const placement = useApp((s) => s.placement)
+  const extraStamps = useApp((s) => s.extraStamps)
+  const primaryRemoved = useApp((s) => s.primaryRemoved)
+  const signatures = useApp((s) => s.signatures)
+  const activeSignatureId = useApp((s) => s.activeSignatureId)
 
   const spaceRef = useRef<HTMLDivElement>(null)
   const [space, setSpace] = useState({ w: 0, h: 0 })
@@ -86,24 +93,26 @@ export default function ReadStage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docKey])
 
-  // Build the preview bytes: the edited version when the doc has unsaved
-  // edits (same builder as saving), else the original.
+  // Build the preview bytes: exactly what saving would produce — unsaved
+  // edits baked, then the stack's signature stamps applied on top
+  // (finalizedBytesFor IS the save path). An untouched doc comes back as the
+  // same byte array, so its cache key stays stable and open stays fast.
   useEffect(() => {
     let cancelled = false
     if (!doc) {
       setPreview(null)
       return
     }
-    if (!sessionHasEdits(editSession, doc)) {
-      setPreview({ key: `${doc.id}:${doc.rev}`, bytes: doc.bytes })
-      return
-    }
     const seq = ++buildSeqRef.current
     void (async () => {
       try {
-        const bytes = await buildEditedPdf(doc.bytes, editSession!)
-        if (!cancelled && seq === buildSeqRef.current)
-          setPreview({ key: `${doc.id}:${doc.rev}:e${seq}`, bytes })
+        const bytes = await finalizedBytesFor(doc)
+        if (!cancelled && seq === buildSeqRef.current) {
+          setPreview({
+            key: bytes === doc.bytes ? `${doc.id}:${doc.rev}` : `${doc.id}:${doc.rev}:f${seq}`,
+            bytes,
+          })
+        }
       } catch {
         // build failed (e.g. protected) — fall back to the original so the
         // reader still shows the document
@@ -114,10 +123,25 @@ export default function ReadStage() {
     return () => {
       cancelled = true
     }
-    // doc.id + doc.rev capture identity and any byte/page change; unrelated
-    // doc fields (status flips) must not rebuild the preview
+    // doc.id/rev capture identity and byte changes; the stamp fields cover
+    // signature setup; doc.smart/override/exclusions cover per-doc placement.
+    // Unrelated doc fields (status flips during signing) must not rebuild.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [doc?.id, doc?.rev, editSession])
+  }, [
+    doc?.id,
+    doc?.rev,
+    editSession,
+    mode,
+    placement,
+    extraStamps,
+    primaryRemoved,
+    signatures,
+    activeSignatureId,
+    doc?.smart,
+    doc?.override,
+    doc?.primaryDisabled,
+    doc?.excludedStamps,
+  ])
 
   // Render the current page at the committed zoom (same pipeline as Edit)
   const previewKey = preview?.key
