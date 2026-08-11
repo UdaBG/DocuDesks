@@ -192,6 +192,7 @@
   "unlock.action": "Déverrouiller",
   "unlock.cancel": "Pas maintenant",
   "unlock.working": "Déverrouillage…",
+  "smart.redetect": "Détecter à nouveau",
   "back.exitToast": "Appuyez encore sur Retour pour quitter",
   "exit.title": "Modifications non enregistrées",
   "exit.body": "Des modifications ou signatures placées ne sont pas enregistrées. Quitter quand même ?",

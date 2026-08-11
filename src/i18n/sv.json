@@ -192,6 +192,7 @@
   "unlock.action": "Lås upp",
   "unlock.cancel": "Inte nu",
   "unlock.working": "Låser upp…",
+  "smart.redetect": "Identifiera igen",
   "back.exitToast": "Tryck bakåt igen för att avsluta",
   "exit.title": "Osparade ändringar",
   "exit.body": "Det finns redigeringar eller placerade signaturer som inte sparats. Lämna ändå?",

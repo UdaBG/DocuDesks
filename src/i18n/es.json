@@ -192,6 +192,7 @@
   "unlock.action": "Desbloquear",
   "unlock.cancel": "Ahora no",
   "unlock.working": "Desbloqueando…",
+  "smart.redetect": "Detectar de nuevo",
   "back.exitToast": "Pulsa atrás otra vez para salir",
   "exit.title": "Cambios sin guardar",
   "exit.body": "Hay ediciones o firmas colocadas sin guardar. ¿Salir de todos modos?",

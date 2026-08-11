@@ -39,6 +39,8 @@ export default function Stage() {
   const updateExtraStamp = useApp((s) => s.updateExtraStamp)
   const excludeStampForDoc = useApp((s) => s.excludeStampForDoc)
   const extraStamps = useApp((s) => s.extraStamps)
+  const detecting = useApp((s) => s.detecting)
+  const redetectDoc = useApp((s) => s.redetectDoc)
   const removeExtraStampEverywhere = useApp((s) => s.removeExtraStampEverywhere)
   const disablePrimary = useApp((s) => s.disablePrimary)
   const removePrimaryEverywhere = useApp((s) => s.removePrimaryEverywhere)
@@ -344,9 +346,22 @@ export default function Stage() {
     )
   }
 
+  // Smart mode always offers a retry — detection was previously one-shot, so
+  // correcting a proposal (or a missed spot) meant re-adding the document.
+  const canRedetect = mode === 'smart' && doc && docOk && doc.smart !== undefined && !detecting
+
   return (
     <section className="stage" ref={spaceRef}>
-      {hint && <div className={`stage-hint hint-${hint.kind}`}>{hint.text}</div>}
+      {(hint || canRedetect) && (
+        <div className={`stage-hint hint-${hint?.kind ?? 'info'}`}>
+          {hint?.text}
+          {canRedetect && (
+            <button className="hint-btn" onClick={() => void redetectDoc(doc.id)}>
+              {t('smart.redetect')}
+            </button>
+          )}
+        </div>
+      )}
 
       {doc && !docOk && <div className="stage-error">{doc.error}</div>}
 

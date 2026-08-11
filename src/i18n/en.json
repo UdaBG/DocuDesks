@@ -192,6 +192,7 @@
   "unlock.action": "Unlock",
   "unlock.cancel": "Not now",
   "unlock.working": "Unlocking…",
+  "smart.redetect": "Detect again",
   "back.exitToast": "Press back again to exit",
   "exit.title": "Unsaved changes",
   "exit.body": "You have edits or placed signatures that haven't been saved. Leave anyway?",

@@ -192,6 +192,7 @@
   "unlock.action": "Entsperren",
   "unlock.cancel": "Jetzt nicht",
   "unlock.working": "Wird entsperrt…",
+  "smart.redetect": "Erneut erkennen",
   "back.exitToast": "Zum Beenden erneut Zurück drücken",
   "exit.title": "Ungespeicherte Änderungen",
   "exit.body": "Es gibt Bearbeitungen oder platzierte Unterschriften, die nicht gespeichert sind. Trotzdem verlassen?",

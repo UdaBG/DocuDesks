@@ -276,6 +276,30 @@ type PickedItem = string | { uri: string; name?: string }
   return doc.save()
 }
 
+// Test helper: build a long "contract" PDF — the REAL signature label lives on
+// an early page while the last page only carries a plain ruled line, so smart
+// detection must not let a last-page bonus outweigh strong early evidence.
+;(window as unknown as Record<string, unknown>).__makeContractPdf = async (pages: number, labelPage: number) => {
+  const { PDFDocument, StandardFonts } = await import('pdf-lib')
+  const doc = await PDFDocument.create()
+  const font = await doc.embedFont(StandardFonts.Helvetica)
+  for (let p = 0; p < pages; p++) {
+    const page = doc.addPage([595, 842])
+    page.drawText(`Service Contract — clause page ${p + 1}`, { x: 60, y: 780, size: 12, font })
+    for (let i = 0; i < 8; i++) {
+      page.drawText(`${p + 1}.${i + 1} The parties agree to the terms described herein.`, { x: 60, y: 700 - i * 40, size: 10, font })
+    }
+    if (p === labelPage) {
+      page.drawText('Signature: ____________________', { x: 60, y: 180, size: 12, font })
+    }
+    if (p === pages - 1) {
+      // a bare ruled line, the weak evidence that used to win on long docs
+      page.drawLine({ start: { x: 60, y: 120 }, end: { x: 260, y: 120 }, thickness: 1 })
+    }
+  }
+  return doc.save()
+}
+
 // Test helper: build a "scanned" PDF (text rasterized to an image, no text
 // layer) so the OCR regressions have a deterministic input.
 ;(window as unknown as Record<string, unknown>).__makeScannedPdf = async (

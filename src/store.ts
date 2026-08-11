@@ -119,6 +119,8 @@ interface AppState {
   addFiles(files: IncomingFile[]): Promise<void>
   addFromPaths(paths: string[]): Promise<void>
   renameByPath(path: string, name: string): void
+  /** forget a doc's smart proposal and manual correction, then detect afresh */
+  redetectDoc(id: string): Promise<void>
   openFileDialog(): Promise<void>
   removeDoc(id: string): void
   clearDocs(): void
@@ -367,6 +369,17 @@ export const useApp = create<AppState>((set, get) => ({
       }
     }
     if (files.length) await get().addFiles(files)
+  },
+
+  async redetectDoc(id) {
+    set((s) => ({
+      docs: s.docs.map((d) =>
+        d.id === id
+          ? { ...d, smart: undefined, override: undefined, primaryDisabled: false, status: 'ready' }
+          : d,
+      ),
+    }))
+    if (get().mode === 'smart') await runDetection(set, get)
   },
 
   // The pick net (Android) learns a file's real DISPLAY_NAME after the normal

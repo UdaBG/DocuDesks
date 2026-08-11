@@ -179,7 +179,11 @@ export async function detectSignatureSpot(bytes: Uint8Array): Promise<Placement 
       const view = page.getViewport({ scale: 1 })
       const pageW = view.width
       const pageH = view.height
-      const pageBonus = p * 3 // prefer later pages
+      // A modest preference for the FINAL page, where most documents sign.
+      // (This was +3 per page — unbounded, so on a long contract any weak
+      // ruled line on page 20 out-scored a genuine "Signature:" label on
+      // page 3. Strong evidence must win regardless of where it lives.)
+      const pageBonus = p === doc.numPages - 1 ? 8 : 0
       const pageStart = candidates.length // this page's candidates begin here
 
       // --- 1 & 2: form fields ---------------------------------------------
