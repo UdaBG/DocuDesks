@@ -88,6 +88,18 @@ try {
   console.log(`retype: "${reHint.slice(0, 60)}"`)
   if (reHint.length < 10) fail('retype lost its hint')
 
+  // the hint announces, then steps aside — it must not bury the document
+  await sleep(4600)
+  const gone = await evaluate(`document.querySelector('.stage-hint')?.textContent ?? ''`)
+  console.log(`after timeout: "${gone}"`)
+  if (gone.length > 0) fail('tool hint should auto-hide after ~4.5s')
+  // re-arming the same tool family announces again
+  await evaluate(`(${E}.setTool('pen'), true)`)
+  await sleep(250)
+  const again = await evaluate(`document.querySelector('.stage-hint')?.textContent ?? ''`)
+  if (!again.includes('·')) fail('activating a tool should re-announce the hint')
+  console.log('re-announce on tool change: OK')
+
   console.log(process.exitCode ? 'DONE WITH FAILURES' : 'ALL CHECKS PASSED')
 } catch (e) {
   console.error('ERROR:', e.message)

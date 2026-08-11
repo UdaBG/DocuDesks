@@ -559,6 +559,19 @@ export default function EditStage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tool])
 
+  // a tool hint announces itself briefly, then steps aside — a permanent
+  // pill sits on top of the document (tester feedback)
+  const [hintVisible, setHintVisible] = useState(false)
+  useEffect(() => {
+    if (tool === 'select') {
+      setHintVisible(false)
+      return
+    }
+    setHintVisible(true)
+    const timer = setTimeout(() => setHintVisible(false), 4500)
+    return () => clearTimeout(timer)
+  }, [tool])
+
   // announce OCR mode changes in the hint slot — tooltips don't exist on
   // touch screens, so the toolbar toggle needs visible feedback
   const [ocrNotice, setOcrNotice] = useState<string | null>(null)
@@ -1529,13 +1542,17 @@ export default function EditStage() {
         (ocrNotice ? (
           <div className="stage-hint hint-info">{t(ocrNotice)}</div>
         ) : tool === 'retype' && !ocrBusy ? (
-          <div className="stage-hint hint-info">
-            {t(pageHasOcr ? 'edit.retypeHintOcr' : 'edit.retypeHint')}
-          </div>
+          hintVisible && (
+            <div className="stage-hint hint-info">
+              {t(pageHasOcr ? 'edit.retypeHintOcr' : 'edit.retypeHint')}
+            </div>
+          )
         ) : (
           // icon-only toolbar taught nobody anything — every tool announces
-          // its name and what a tap/drag will do while it is active
+          // its name and what a tap/drag will do when activated (briefly:
+          // the pill must not sit on the document forever)
           tool !== 'select' &&
+          hintVisible &&
           !session?.editingId && (
             <div className="stage-hint hint-info">
               <strong>{t(`tool.${tool}`)}</strong> · {t(`tool.hint.${tool}`)}
