@@ -22,6 +22,8 @@ function EditActionBar() {
   const undo = useEdit((s) => s.undo)
   const redo = useEdit((s) => s.redo)
   const dropSession = useEdit((s) => s.dropSession)
+  const openSession = useEdit((s) => s.openSession)
+  const setPageIndex = useEdit((s) => s.setPageIndex)
   const savedPath = useEdit((s) => s.savedPath)
   const setSavedPath = useEdit((s) => s.setSavedPath)
   const [busy, setBusy] = useState(false)
@@ -62,8 +64,16 @@ function EditActionBar() {
       const bytes = await build(false)
       if (!bytes) return
       const pageCount = await getPageCount(bytes)
+      // keep the user's place: a fresh session starts at page 1, which threw
+      // people back to the top of long documents after every Apply
+      const keepPage = Math.min(session?.pageIndex ?? 0, pageCount - 1)
       dropSession(doc.id)
       replaceDocBytes(doc.id, bytes, pageCount)
+      const fresh = useApp.getState().docs.find((d) => d.id === doc.id)
+      if (fresh) {
+        openSession(fresh)
+        if (keepPage > 0) setPageIndex(doc.id, keepPage)
+      }
     } finally {
       setBusy(false)
     }

@@ -511,15 +511,25 @@ export default function EditStage() {
   const pageRef = session?.pages[session.pageIndex]
   const docKey = doc ? `${doc.id}:${doc.rev}` : ''
 
-  // fit-zoom resets when switching documents
+  // fit-zoom resets when SWITCHING documents; a rev bump on the same doc
+  // (Apply to stack, unlock) re-opens the same paper — the user's zoom stays
+  // and the scroll position is put back once the fresh render lands
+  const prevDocIdRef = useRef('')
   useEffect(() => {
-    zoomRef.current = 1
-    zoomTargetRef.current = 1
-    pendingScaleRef.current = 1
-    setPendingScale(1)
-    setZoom(1)
-    lastScrollRef.current = { l: 0, t: 0 }
-    pendingRestoreRef.current = null
+    const idChanged = prevDocIdRef.current !== (doc?.id ?? '')
+    prevDocIdRef.current = doc?.id ?? ''
+    if (idChanged) {
+      zoomRef.current = 1
+      zoomTargetRef.current = 1
+      pendingScaleRef.current = 1
+      setPendingScale(1)
+      setZoom(1)
+      lastScrollRef.current = { l: 0, t: 0 }
+      pendingRestoreRef.current = null
+    } else if (lastScrollRef.current.l || lastScrollRef.current.t) {
+      pendingRestoreRef.current = { ...lastScrollRef.current }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docKey])
 
   // track the live scroll position natively; the browser can fire a stray
