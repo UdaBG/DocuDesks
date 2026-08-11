@@ -1659,11 +1659,17 @@ export default function EditStage() {
       {space.h >= 240 &&
         (ocrNotice ? (
           <div className="stage-hint hint-info">{t(ocrNotice)}</div>
+        ) : tool === 'retype' && !ocrBusy ? (
+          <div className="stage-hint hint-info">
+            {t(pageHasOcr ? 'edit.retypeHintOcr' : 'edit.retypeHint')}
+          </div>
         ) : (
-          tool === 'retype' &&
-          !ocrBusy && (
+          // icon-only toolbar taught nobody anything — every tool announces
+          // its name and what a tap/drag will do while it is active
+          tool !== 'select' &&
+          !session?.editingId && (
             <div className="stage-hint hint-info">
-              {t(pageHasOcr ? 'edit.retypeHintOcr' : 'edit.retypeHint')}
+              <strong>{t(`tool.${tool}`)}</strong> · {t(`tool.hint.${tool}`)}
             </div>
           )
         ))}
