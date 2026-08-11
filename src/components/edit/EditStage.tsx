@@ -20,6 +20,7 @@ import { ocrPage, pageLooksScanned, setOcrProgress } from '../../lib/ocr'
 import { inkToSvgPath, PEN_PROFILES } from '../../lib/drawing'
 import { fontById, matchFontFromPdf } from '../../editor/fonts'
 import { useMediaQuery } from '../../lib/useMediaQuery'
+import { useZoomPan } from '../../lib/useZoomPan'
 import EditToolbar from './EditToolbar'
 import PagesStrip from './PagesStrip'
 import { ColorPopover } from './ColorField'
@@ -431,23 +432,6 @@ export default function EditStage() {
 
   const spaceRef = useRef<HTMLDivElement>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const panRef = useRef<{ x: number; y: number; sl: number; st: number } | null>(null)
-  /** last real scroll position — display:none (mobile tab switch) zeroes the
-   *  live one silently, so it is restored when the stage reappears */
-  const lastScrollRef = useRef({ l: 0, t: 0 })
-  /** touchscreen two-finger pinch+pan (trackpads arrive as ctrl+wheel instead) */
-  const touchesRef = useRef(new Map<number, { x: number; y: number }>())
-  const pinchRef = useRef<{ d0: number; z0: number; c: { x: number; y: number } } | null>(null)
-  const [zoom, setZoom] = useState(1) // committed zoom — crisp render
-  const zoomRef = useRef(1)
-  const zoomTargetRef = useRef(1)
-  /** interim CSS scale during a gesture (target / committed) — 60fps feedback */
-  const [pendingScale, setPendingScale] = useState(1)
-  const pendingScaleRef = useRef(1)
-  const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const sizerRef = useRef<HTMLDivElement>(null)
-  const sheetElRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<PageView | null>(null)
   const [space, setSpace] = useState({ w: 0, h: 0 })
   const [ocrBusy, setOcrBusy] = useState(false)
@@ -456,8 +440,6 @@ export default function EditStage() {
   const ocrJobsRef = useRef(new Map<string, Promise<PageText>>())
   /** click generation — only the newest retype click opens a box */
   const retypeSeqRef = useRef(0)
-  /** text/retype: a clean tap opens a box, a slide pans (see onOverlayPointer*) */
-  const tapRef = useRef<{ xf: number; yf: number; x: number; y: number; moved: boolean } | null>(null)
   // on-box quick colour chip (phones only — desktop has the always-visible
   // panel); holds the text-object id whose mixer is open
   const narrow = useMediaQuery('(max-width: 760px)')
@@ -480,6 +462,19 @@ export default function EditStage() {
   }, [])
   const gestureRef = useRef<Gesture | null>(null)
   const textCacheRef = useRef(new Map<string, PageText>())
+
+  // the shared canvas machinery: zoom, pinch, pan, tap-vs-slide, scroll
+  // preserve/restore — extracted to useZoomPan and shared with Sign/Read
+  const zp = useZoomPan({
+    getSheetSize: () => (viewRef.current ? { W: viewRef.current.W, H: viewRef.current.H } : null),
+    spaceW: space.w,
+    view,
+    onPinchStart: () => {
+      // second finger: abort any tool gesture
+      gestureRef.current = null
+      setDraft(null)
+    },
+  })
 
   useEffect(() => {
     if (doc && doc.status !== 'error') openSession(doc)
@@ -518,59 +513,10 @@ export default function EditStage() {
   useEffect(() => {
     const idChanged = prevDocIdRef.current !== (doc?.id ?? '')
     prevDocIdRef.current = doc?.id ?? ''
-    if (idChanged) {
-      zoomRef.current = 1
-      zoomTargetRef.current = 1
-      pendingScaleRef.current = 1
-      setPendingScale(1)
-      setZoom(1)
-      lastScrollRef.current = { l: 0, t: 0 }
-      pendingRestoreRef.current = null
-    } else if (lastScrollRef.current.l || lastScrollRef.current.t) {
-      pendingRestoreRef.current = { ...lastScrollRef.current }
-    }
+    if (idChanged) zp.resetZoom()
+    else zp.queueScrollRestore()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docKey])
-
-  // track the live scroll position natively; the browser can fire a stray
-  // scroll-to-0 when the container regains its box, so restores use a
-  // snapshot taken at the moment the stage reappears
-  useEffect(() => {
-    const el = scrollRef.current
-    if (!el) return
-    const onScroll = () => {
-      if (el.offsetParent) lastScrollRef.current = { l: el.scrollLeft, t: el.scrollTop }
-    }
-    el.addEventListener('scroll', onScroll, { passive: true })
-    return () => el.removeEventListener('scroll', onScroll)
-  }, [])
-
-  // coming back from another mobile tab: the stage was display:none, which
-  // zeroed the scroll offsets while zoom survived — put the view back once
-  // the page has re-rendered (scroll writes clamp to 0 on an empty container)
-  const pendingRestoreRef = useRef<{ l: number; t: number } | null>(null)
-  const prevSpaceW = useRef(0)
-  useEffect(() => {
-    const was = prevSpaceW.current
-    prevSpaceW.current = space.w
-    if (was > 0 && space.w === 0 && (lastScrollRef.current.l || lastScrollRef.current.t)) {
-      // the stage just hid: snapshot NOW — on re-show the browser announces
-      // the zeroed offsets with a scroll event before we could read them
-      pendingRestoreRef.current = { ...lastScrollRef.current }
-    }
-  }, [space.w])
-  useEffect(() => {
-    const target = pendingRestoreRef.current
-    if (!target || !view) return
-    pendingRestoreRef.current = null
-    requestAnimationFrame(() => {
-      const el = scrollRef.current
-      if (el) {
-        el.scrollLeft = target.l
-        el.scrollTop = target.t
-      }
-    })
-  }, [view])
 
   // switching the OCR mode changes what a page's text set means
   const ocrOverride = useEdit((s) => s.ocrOverride)
@@ -579,39 +525,12 @@ export default function EditStage() {
     ocrJobsRef.current.clear()
   }, [ocrOverride])
 
-  // Self-heal touch-gesture state. touchesRef is pruned by capture-phase
-  // handlers on the scroll container, but a pointerup can be lost when the
-  // overlay unmounts (a text box opening) or pointer capture retargets the
-  // event — leaving a stale touch that reads as a phantom second finger
-  // (every move zooms) and blocks the tools. Window listeners never miss the
-  // release, whatever element it lands on.
-  useEffect(() => {
-    const release = (e: PointerEvent) => {
-      touchesRef.current.delete(e.pointerId)
-      if (touchesRef.current.size < 2) pinchRef.current = null
-      if (touchesRef.current.size === 0) {
-        panRef.current = null
-        tapRef.current = null
-      }
-    }
-    window.addEventListener('pointerup', release)
-    window.addEventListener('pointercancel', release)
-    window.addEventListener('lostpointercapture', release)
-    return () => {
-      window.removeEventListener('pointerup', release)
-      window.removeEventListener('pointercancel', release)
-      window.removeEventListener('lostpointercapture', release)
-    }
-  }, [])
-
   // Changing tools is a deliberate toolbar tap with no finger drawing on the
   // canvas — reset any half-tracked gesture so a leftover can't corrupt it.
   useEffect(() => {
-    touchesRef.current.clear()
-    pinchRef.current = null
-    panRef.current = null
-    tapRef.current = null
+    zp.resetGestures()
     gestureRef.current = null
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tool])
 
   // announce OCR mode changes in the hint slot — tooltips don't exist on
@@ -656,80 +575,14 @@ export default function EditStage() {
   // Installed once and torn down on unmount; they read live values from refs.
   useEffect(() => {
     const w = window as unknown as Record<string, unknown>
-    w.__editScrollDebug = () => ({
-      last: { ...lastScrollRef.current },
-      pending: pendingRestoreRef.current ? { ...pendingRestoreRef.current } : null,
-      prevW: prevSpaceW.current,
-    })
-    w.__editGestureDebug = () => ({
-      touches: touchesRef.current.size,
-      pinch: !!pinchRef.current,
-      pan: !!panRef.current,
-      tap: !!tapRef.current,
-    })
+    w.__editScrollDebug = zp.scrollDebug
+    w.__editGestureDebug = zp.gestureDebug
     return () => {
       delete w.__editScrollDebug
       delete w.__editGestureDebug
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  // the zoom-settle timeout calls setZoom ~180ms later — cancel it on unmount
-  // so it can't fire a state update after the stage is gone
-  useEffect(() => () => {
-    if (settleTimerRef.current) clearTimeout(settleTimerRef.current)
-  }, [])
-
-  /**
-   * Smooth zoom: scale instantly with CSS (anchored at the pointer), then
-   * settle into a crisp re-render once the gesture pauses.
-   */
-  const zoomTo = useCallback((target: number, anchor?: { x: number; y: number }) => {
-    target = clamp(target, 0.5, 4)
-    const factor = target / zoomTargetRef.current
-    if (Math.abs(factor - 1) < 0.001) return
-    zoomTargetRef.current = target
-    const scale = target / zoomRef.current
-    pendingScaleRef.current = scale
-    setPendingScale(scale)
-    // imperative fast path: the sheet scales within this very event, without
-    // waiting for a React render (which batches during rapid pinches)
-    const v = viewRef.current
-    if (v && sizerRef.current && sheetElRef.current) {
-      sizerRef.current.style.width = `${v.W * scale}px`
-      sizerRef.current.style.height = `${v.H * scale}px`
-      sheetElRef.current.style.transform = scale !== 1 ? `scale(${scale})` : ''
-    }
-
-    const el = scrollRef.current
-    if (el) {
-      const rect = el.getBoundingClientRect()
-      const ax = (anchor?.x ?? rect.left + rect.width / 2) - rect.left
-      const ay = (anchor?.y ?? rect.top + rect.height / 2) - rect.top
-      el.scrollLeft = (el.scrollLeft + ax) * factor - ax
-      el.scrollTop = (el.scrollTop + ay) * factor - ay
-    }
-
-    if (settleTimerRef.current) clearTimeout(settleTimerRef.current)
-    settleTimerRef.current = setTimeout(() => {
-      zoomRef.current = zoomTargetRef.current
-      setZoom(zoomTargetRef.current)
-    }, 180)
-  }, [])
-
-  // Ctrl+wheel / trackpad pinch (Windows delivers pinches as fine-grained
-  // ctrl+wheel events) — delta-proportional, anchored under the pointer
-  useEffect(() => {
-    const el = scrollRef.current
-    if (!el) return
-    const onWheel = (e: WheelEvent) => {
-      if (!e.ctrlKey) return // plain two-finger scroll pans natively
-      e.preventDefault()
-      const factor = Math.exp(-e.deltaY * (e.deltaMode === 1 ? 0.06 : 0.0024))
-      zoomTo(zoomTargetRef.current * factor, { x: e.clientX, y: e.clientY })
-    }
-    el.addEventListener('wheel', onWheel, { passive: false })
-    return () => el.removeEventListener('wheel', onWheel)
-  }, [view === null, zoomTo])
 
   // Render the current page (pdf page or blank sheet)
   useEffect(() => {
@@ -753,14 +606,13 @@ export default function EditStage() {
       // phones fit by width only: the keyboard shrinking the stage height
       // must never rescale the page under an open text box
       const phone = space.w < 760
-      const maxW = (space.w - (phone ? 20 : 40)) * zoom
-      const maxH = phone ? Number.POSITIVE_INFINITY : (space.h - 128) * zoom
+      const maxW = (space.w - (phone ? 20 : 40)) * zp.zoom
+      const maxH = phone ? Number.POSITIVE_INFINITY : (space.h - 128) * zp.zoom
       if (pageRef.src.type === 'blank') {
         const { wPt, hPt } = pageRef.src
         const fit = Math.min(maxW / wPt, maxH / hPt)
         setView({ pageId: pageRef.id, W: Math.floor(wPt * fit), H: Math.floor(hPt * fit), wPt, hPt, canvas: null })
-        pendingScaleRef.current = 1
-        setPendingScale(1)
+        zp.commitRender()
         return
       }
       if (openedRef.current?.key !== docKey) {
@@ -798,8 +650,7 @@ export default function EditStage() {
           canvas: rendered.canvas,
         })
         // the crisp render replaces the interim CSS scale
-        pendingScaleRef.current = 1
-        setPendingScale(1)
+        zp.commitRender()
       } catch {
         retry()
       }
@@ -811,7 +662,7 @@ export default function EditStage() {
       clearTimeout(timer)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [docKey, doc?.status, pageRef?.id, space.w, space.h, zoom])
+  }, [docKey, doc?.status, pageRef?.id, space.w, space.h, zp.zoom])
 
   // Keyboard: delete / undo / redo
   useEffect(() => {
@@ -828,13 +679,13 @@ export default function EditStage() {
         else undo(doc.id)
       } else if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+') && !typing) {
         e.preventDefault()
-        zoomTo(zoomTargetRef.current * 1.2)
+        zp.zoomStep(1.2)
       } else if ((e.ctrlKey || e.metaKey) && e.key === '-' && !typing) {
         e.preventDefault()
-        zoomTo(zoomTargetRef.current / 1.2)
+        zp.zoomStep(1 / 1.2)
       } else if ((e.ctrlKey || e.metaKey) && e.key === '0' && !typing) {
         e.preventDefault()
-        zoomTo(1)
+        zp.zoomReset()
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y' && !typing) {
         e.preventDefault()
         redo(doc.id)
@@ -1272,7 +1123,7 @@ export default function EditStage() {
 
   function onOverlayPointerDown(e: React.PointerEvent) {
     if (e.button !== 0) return // middle button pans the scroll container
-    if (pinchRef.current) return // two fingers are zooming, not drawing
+    if (zp.isPinching()) return // two fingers are zooming, not drawing
     if (!doc || !session || !view || !pageRef) return
     if (sampling) {
       // color-picker "sample from document" mode: the loupe lets the user aim,
@@ -1297,8 +1148,7 @@ export default function EditStage() {
       setEditing(doc.id, null)
       // any pointer on empty paper pans the canvas (Figma-style); the scroll
       // container's pointermove handler does the actual scrolling
-      const el = scrollRef.current
-      if (el) panRef.current = { x: e.clientX, y: e.clientY, sl: el.scrollLeft, st: el.scrollTop }
+      zp.startPan(e)
       return
     }
     if (tool === 'retype' || tool === 'text') {
@@ -1313,9 +1163,8 @@ export default function EditStage() {
       // A clean tap opens the box; a slide pans the page instead. Placement is
       // deferred to pointerup (onOverlayPointerUp) so you can navigate a
       // zoomed document with a text tool active without dropping a box.
-      const el = scrollRef.current
-      if (el) panRef.current = { x: e.clientX, y: e.clientY, sl: el.scrollLeft, st: el.scrollTop }
-      tapRef.current = { xf, yf, x: e.clientX, y: e.clientY, moved: false }
+      zp.startPan(e)
+      zp.beginTap(e, xf, yf)
       return
     }
     if (tool === 'erase') {
@@ -1370,15 +1219,11 @@ export default function EditStage() {
     // text/retype: past the movement threshold this is a pan, not a tap — the
     // scroll container's pan handler does the scrolling; we just record it so
     // pointerup won't drop a box
-    const tap = tapRef.current
-    if (tap) {
-      if (!tap.moved && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > 8) tap.moved = true
-      return
-    }
+    if (zp.trackTap(e)) return
     const g = gestureRef.current
     const [xf, yf] = toFrac(e)
     // mid-pinch the sheet is CSS-scaled: pointer deltas arrive in scaled space
-    const ps = pendingScaleRef.current
+    const ps = zp.pendingScaleRef.current
 
     if (g?.kind === 'move') {
       const dx = (e.clientX - g.startX) / ps / view.W
@@ -1456,10 +1301,8 @@ export default function EditStage() {
   function onOverlayPointerUp() {
     // text/retype: resolve the deferred tap. A clean tap opens the box at the
     // touch-down point; a slide was a pan (handled by the scroll container).
-    const tap = tapRef.current
+    const tap = zp.takeTap()
     if (tap) {
-      tapRef.current = null
-      panRef.current = null
       if (!tap.moved && doc && session && pageRef && view) {
         if (tool === 'retype') {
           void retypeAt(tap.xf, tap.yf)
@@ -1687,97 +1530,32 @@ export default function EditStage() {
 
       {space.h >= 240 && (
         <div className="zoom-pill">
-          <button title={t('edit.zoomOut')} onClick={() => zoomTo(zoomTargetRef.current / 1.2)}>
+          <button title={t('edit.zoomOut')} onClick={() => zp.zoomStep(1 / 1.2)}>
             −
           </button>
-          <button className="zoom-value" title={t('edit.zoomReset')} onClick={() => zoomTo(1)}>
-            {Math.round(zoom * pendingScale * 100)}%
+          <button className="zoom-value" title={t('edit.zoomReset')} onClick={() => zp.zoomReset()}>
+            {Math.round(zp.zoomDisplay * 100)}%
           </button>
-          <button title={t('edit.zoomIn')} onClick={() => zoomTo(zoomTargetRef.current * 1.2)}>
+          <button title={t('edit.zoomIn')} onClick={() => zp.zoomStep(1.2)}>
             +
           </button>
         </div>
       )}
 
-      <div
-        className="edit-scroll"
-        ref={scrollRef}
-        onPointerDownCapture={(e) => {
-          if (e.pointerType !== 'touch') return
-          touchesRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
-          if (touchesRef.current.size === 2) {
-            // second finger: abort any tool gesture, start pinch+pan
-            gestureRef.current = null
-            panRef.current = null
-            tapRef.current = null
-            setDraft(null)
-            const [a, b] = [...touchesRef.current.values()]
-            pinchRef.current = {
-              d0: Math.max(Math.hypot(a.x - b.x, a.y - b.y), 20),
-              z0: zoomTargetRef.current,
-              c: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
-            }
-          }
-        }}
-        onPointerMoveCapture={(e) => {
-          if (e.pointerType !== 'touch' || !touchesRef.current.has(e.pointerId)) return
-          touchesRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
-          if (pinchRef.current && touchesRef.current.size >= 2) {
-            e.stopPropagation()
-            const [a, b] = [...touchesRef.current.values()]
-            const d = Math.max(Math.hypot(a.x - b.x, a.y - b.y), 20)
-            const c = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
-            // spread = zoom about the centroid; centroid travel = pan
-            zoomTo(pinchRef.current.z0 * (d / pinchRef.current.d0), c)
-            const el = scrollRef.current
-            if (el) {
-              el.scrollLeft -= c.x - pinchRef.current.c.x
-              el.scrollTop -= c.y - pinchRef.current.c.y
-            }
-            pinchRef.current.c = c
-          }
-        }}
-        onPointerUpCapture={(e) => {
-          touchesRef.current.delete(e.pointerId)
-          if (touchesRef.current.size < 2) pinchRef.current = null
-        }}
-        onPointerCancelCapture={(e) => {
-          touchesRef.current.delete(e.pointerId)
-          if (touchesRef.current.size < 2) pinchRef.current = null
-        }}
-        onPointerDown={(e) => {
-          if (e.button !== 1) return
-          e.preventDefault()
-          const el = scrollRef.current!
-          panRef.current = { x: e.clientX, y: e.clientY, sl: el.scrollLeft, st: el.scrollTop }
-          try {
-            el.setPointerCapture(e.pointerId)
-          } catch {
-            /* synthetic pointer */
-          }
-        }}
-        onPointerMove={(e) => {
-          const p = panRef.current
-          if (!p) return
-          const el = scrollRef.current!
-          el.scrollLeft = p.sl - (e.clientX - p.x)
-          el.scrollTop = p.st - (e.clientY - p.y)
-        }}
-        onPointerUp={() => (panRef.current = null)}
-      >
+      <div className="edit-scroll" {...zp.scrollProps}>
         {view && (
           <div
             className="zoom-sizer"
-            ref={sizerRef}
-            style={{ width: view.W * pendingScale, height: view.H * pendingScale }}
+            ref={zp.sizerRef}
+            style={{ width: view.W * zp.pendingScale, height: view.H * zp.pendingScale }}
           >
           <div
             className="sheet edit-sheet"
-            ref={sheetElRef}
+            ref={zp.sheetElRef}
             style={{
               width: view.W,
               height: view.H,
-              transform: pendingScale !== 1 ? `scale(${pendingScale})` : undefined,
+              transform: zp.pendingScale !== 1 ? `scale(${zp.pendingScale})` : undefined,
             }}
           >
           <div
