@@ -102,6 +102,15 @@ try {
   await waitFor(`${S}.docs.length === 2`, 'genuine open still added')
   console.log('genuine open still added alongside')
 
+  // 5. a delivery whose NAME matches a saved file is skipped even when the
+  // URI differs from the one the save dialog returned (provider variants)
+  await evaluate(`(window.__signerSavedNames = new Set(["Report_signed.pdf"]), true)`)
+  await evaluate(`window.__androidPickedFiles([{ uri: "${esc(g1)}?variant=1", name: "Report_signed.pdf" }])`)
+  await sleep(1200)
+  const n5 = await evaluate(`${S}.docs.length`)
+  console.log('docs after saved-name delivery via variant URI:', n5)
+  if (n5 !== 2) fail(`a saved NAME was re-imported through a variant URI (${n5} docs)`)
+
   console.log(process.exitCode ? 'DONE WITH FAILURES' : 'ALL CHECKS PASSED')
 } catch (e) {
   console.error('ERROR:', e.message)

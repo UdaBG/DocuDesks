@@ -159,6 +159,9 @@ type PickedItem = string | { uri: string; name?: string }
       if (!uri) continue
       if (saving || guard.__signerSavedUris?.has(uri)) continue // our own save output — not a pick
       const realName = (typeof item === 'string' ? '' : (item.name ?? '')).trim()
+      // some providers report a different URI to the net than to the save
+      // dialog — the saved NAME is the identity of last resort
+      if (realName && guard.__signerSavedNames?.has(realName)) continue
       // if the normal open path already added it, just correct the name
       const existing = useApp.getState().docs.find((d) => d.path === uri)
       if (existing) {

@@ -18,6 +18,13 @@ export interface SaveGuard {
   __signerSavingUntil?: number
   /** exact content URIs the app just saved to — never re-import these */
   __signerSavedUris?: Set<string>
+  /**
+   * display names the app saved under this session ("X_signed.pdf", incl. the
+   * de-duplicated "(2)" variants) — some providers hand the pick net a URI
+   * that differs byte-wise from the one the save dialog returned, so the name
+   * is the identity of last resort
+   */
+  __signerSavedNames?: Set<string>
 }
 
 export function isTauri(): boolean {
@@ -121,6 +128,8 @@ export function createTauriApi(): SignerApi {
         })
         if (!target) return '' // cancelled — nothing saved, so nothing to suppress
         saveNameCounts.set(name, used + 1)
+        ;(w.__signerSavedNames ??= new Set<string>()).add(name)
+        w.__signerSavedNames.add(suggested)
         // Record the URI and open a short suppression window *now* — the dialog
         // has closed, so its activity result is forwarded (~300ms later) and
         // must not be re-imported as a new document. Setting it here (not when
