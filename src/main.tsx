@@ -331,6 +331,40 @@ type PickedItem = string | { uri: string; name?: string }
   return doc.save()
 }
 
+// Test helper: a multi-page "scanned" PDF (every page is one big image, no
+// text layer). sigPage gets a signature label + ruled line; -1 = none at all.
+// Exercises the OCR budget in smart detection (scan pages are expensive).
+;(window as unknown as Record<string, unknown>).__makeScannedPdfPages = async (
+  pages: number,
+  sigPage: number,
+) => {
+  const { PDFDocument } = await import('pdf-lib')
+  const doc = await PDFDocument.create()
+  for (let p = 0; p < pages; p++) {
+    const canvas = document.createElement('canvas')
+    canvas.width = 1190
+    canvas.height = 1684
+    const g = canvas.getContext('2d')!
+    g.fillStyle = '#f4f1e8'
+    g.fillRect(0, 0, canvas.width, canvas.height)
+    g.fillStyle = '#232323'
+    g.font = '28px Arial'
+    for (let i = 0; i < 10; i++) {
+      g.fillText(`Result sheet page ${p + 1} row ${i + 1} of the examination`, 120, 160 + i * 64)
+    }
+    if (p === sigPage) {
+      g.fillText('Authorized Signature', 120, 1100)
+      g.fillRect(120, 1134, 380, 3)
+    }
+    const png = await doc.embedPng(
+      Uint8Array.from(atob(canvas.toDataURL('image/png').split(',')[1]), (c) => c.charCodeAt(0)),
+    )
+    const page = doc.addPage([595, 842])
+    page.drawImage(png, { x: 0, y: 0, width: 595, height: 842 })
+  }
+  return doc.save()
+}
+
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />

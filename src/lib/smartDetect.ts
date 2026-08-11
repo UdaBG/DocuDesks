@@ -170,11 +170,26 @@ async function collectDrawings(page: PDFPageProxy): Promise<{ lines: HLine[]; im
   return { lines, images }
 }
 
+/**
+ * A candidate at or above this is real evidence (a signature field, a label,
+ * a sign-off) — anything below is circumstantial (a bare ruled line). Used to
+ * decide whether spending OCR time on scanned pages could change the answer.
+ */
+const CONFIDENT = 75
+
 export async function detectSignatureSpot(bytes: Uint8Array): Promise<Placement | null> {
   const { doc, close } = await openPdf(bytes)
   const candidates: Candidate[] = []
   try {
-    for (let p = 0; p < doc.numPages; p++) {
+    /**
+     * Analyse one page and push its candidates. OCR (for scanned pages) only
+     * runs when `withOcr` — pass 1 sweeps every page with the cheap evidence
+     * (text layer, form fields, vector lines) and only returns whether the
+     * page LOOKS like a scan; pass 2 then OCRs a budgeted few. Detection on a
+     * long phone-scanned document used to OCR every page up front — minutes
+     * of silence that read as "smart detect does nothing".
+     */
+    async function analyzePage(p: number, withOcr: boolean): Promise<boolean> {
       const page = await doc.getPage(p + 1)
       const view = page.getViewport({ scale: 1 })
       const pageW = view.width
@@ -224,7 +239,8 @@ export async function detectSignatureSpot(bytes: Uint8Array): Promise<Placement 
       let scanned: OcrPageResult | null = null
       const textLen = pieces.reduce((n, q) => n + q.str.trim().length, 0)
       const bigImage = drawings.images.some((im) => im.w * im.h >= pageW * pageH * 0.55)
-      if (isScannedText(pieces) || (bigImage && textLen < 600)) {
+      const looksScanned = isScannedText(pieces) || (bigImage && textLen < 600)
+      if (looksScanned && withOcr) {
         try {
           scanned = await ocrPage(page)
           const overlap = (a: TextPiece, b: TextPiece) =>
@@ -404,6 +420,40 @@ export async function detectSignatureSpot(bytes: Uint8Array): Promise<Placement 
         c.x = clamp01(c.x / pageW)
         c.yBottom = clamp01(1 - c.yBottom / pageH) // fraction from top to the signing line
         c.w = Math.min(Math.max(c.w / pageW, 0.1), 0.5)
+      }
+      return looksScanned
+    }
+
+    // Pass 1: every page, cheap evidence only. Remember which pages are scans.
+    const scanPages: number[] = []
+    for (let p = 0; p < doc.numPages; p++) {
+      if (await analyzePage(p, false)) scanPages.push(p)
+    }
+
+    // Pass 2: OCR — only if the cheap pass found nothing convincing, only on
+    // the pages most likely to carry a signature (the last page, the first,
+    // then backwards from the end), within a hard page-and-time budget, and
+    // stopping the moment real evidence appears. A signature spot on page 17
+    // of a 24-page scan is rare enough to trade for detection that answers
+    // in seconds instead of minutes.
+    const bestScore = () => candidates.reduce((m, c) => Math.max(m, c.score), 0)
+    if (scanPages.length && bestScore() < CONFIDENT) {
+      const order: number[] = []
+      const push = (p: number) => {
+        if (scanPages.includes(p) && !order.includes(p)) order.push(p)
+      }
+      push(doc.numPages - 1)
+      push(0)
+      for (let p = doc.numPages - 2; p > 0; p--) push(p)
+      const deadline = Date.now() + 25_000
+      for (const p of order.slice(0, 6)) {
+        // re-analysing with OCR duplicates the page's cheap candidates —
+        // drop them first so the page is represented once
+        for (let i = candidates.length - 1; i >= 0; i--) {
+          if (candidates[i].pageIndex === p) candidates.splice(i, 1)
+        }
+        await analyzePage(p, true)
+        if (bestScore() >= CONFIDENT || Date.now() > deadline) break
       }
     }
   } finally {

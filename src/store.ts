@@ -267,6 +267,8 @@ export const useApp = create<AppState>((set, get) => ({
   addGeneratedDoc(name, bytes, pageCount) {
     const doc: SigDoc = { id: uid(), name, bytes, pageCount, rev: 0, status: 'ready' }
     set((s) => ({ docs: [...s.docs, doc], selectedDocId: doc.id }))
+    // a doc generated while smart mode is on must get analysed like any other
+    if (get().mode === 'smart') void runDetection(set, get)
   },
 
   replaceDocBytes(id, bytes, pageCount) {
@@ -288,6 +290,8 @@ export const useApp = create<AppState>((set, get) => ({
     }))
     const doc = get().docs.find((d) => d.id === id)
     if (doc) set({ previewPage: Math.min(get().previewPage, doc.pageCount - 1) })
+    // the new bytes cleared the smart verdict — analyse them if smart is on
+    if (get().mode === 'smart') void runDetection(set, get)
   },
 
   async unlockProtectedDoc(id) {
@@ -501,7 +505,17 @@ export const useApp = create<AppState>((set, get) => ({
       const pl = effectivePlacement(doc, mode, get().placement)
       if (pl) set({ previewPage: resolvePageIndex(pl, doc.pageCount) })
     }
-    if (mode === 'smart') void runDetection(set, get)
+    if (mode === 'smart') {
+      // switching back to smart is a request to LOOK AGAIN: documents whose
+      // last pass came up empty get re-analysed (found spots and manual
+      // corrections are kept — only the "nothing found" verdicts retry)
+      set((s) => ({
+        docs: s.docs.map((d) =>
+          d.smart === null && !d.override ? { ...d, smart: undefined, status: 'ready' } : d,
+        ),
+      }))
+      void runDetection(set, get)
+    }
   },
 
   /** Called when the user drags/resizes the signature on the preview. */
