@@ -196,6 +196,15 @@ select,
   grid-template-columns: 258px 1fr;
 }
 
+/* the edit tools live in a host that is invisible on desktop (the panel is
+   a plain grid column) and becomes a slide-in drawer on phones */
+.tools-host {
+  display: contents;
+}
+.drawer-veil {
+  display: none;
+}
+
 /* ---------- top bar ---------- */
 
 .topbar {
@@ -2328,6 +2337,37 @@ input[type='range'] {
   .layout {
     display: block;
     min-height: 0;
+  }
+
+  /* edit tools: a drawer over the document, not a page of its own */
+  .drawer-veil {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 39;
+    background: rgba(10, 13, 20, 0.45);
+  }
+  .tools-host {
+    display: block;
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(320px, 84vw);
+    z-index: 40;
+    transform: translateX(105%);
+    transition: transform 0.22s ease;
+    background: var(--panel);
+    box-shadow: -14px 0 44px rgba(0, 0, 0, 0.35);
+  }
+  .tools-host.open {
+    transform: translateX(0);
+  }
+  .tools-host .right-panel {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    border-left: 1px solid var(--ink-200);
   }
   .docs-panel,
   .right-panel,

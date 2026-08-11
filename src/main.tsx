@@ -112,6 +112,12 @@ let lastBackAt = 0
     else (veil as HTMLElement).click()
     return 'handled'
   }
+  // the edit-tools drawer (phone) closes like any overlay
+  const drawer = document.querySelector<HTMLElement>('.drawer-veil')
+  if (drawer) {
+    drawer.click()
+    return 'handled'
+  }
   const doc = app.docs.find((d) => d.id === app.selectedDocId)
   const session = doc ? edit.sessions[doc.id] : undefined
   // 2. typing: close the box (blur commits it) and drop the keyboard

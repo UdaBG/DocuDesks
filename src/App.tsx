@@ -31,6 +31,10 @@ export default function App() {
   const backToast = useApp((s) => s.backToast)
   const [dragDepth, setDragDepth] = useState(0)
   const [mobileTab, setMobileTab] = useState<MobileTab>('docs')
+  // phone edit view: the tools panel slides in over the document instead of
+  // replacing the whole page (tester feedback — swapping away mid-edit was
+  // disorienting). Desktop and the sign view keep their layouts.
+  const [toolsDrawer, setToolsDrawer] = useState(false)
   const [appError, setAppError] = useState<string | null>(null)
   const [unlockBusy, setUnlockBusy] = useState(false)
   // protected docs the user chose to edit without unlocking — don't re-nag
@@ -108,6 +112,11 @@ export default function App() {
     if (view === 'read' && mobileTab === 'sigs') setMobileTab('sign')
   }, [view, mobileTab])
 
+  // the tools drawer belongs to the edit view only
+  useEffect(() => {
+    if (view !== 'edit') setToolsDrawer(false)
+  }, [view])
+
   const onDrop = useCallback(
     async (e: React.DragEvent) => {
       e.preventDefault()
@@ -144,10 +153,34 @@ export default function App() {
       <div className="layout" data-tab={mobileTab} data-view={view}>
         <DocumentList />
         {view === 'edit' ? <EditStage /> : view === 'read' ? <ReadStage /> : <Stage />}
-        {view === 'edit' ? <EditPanel /> : view === 'read' ? null : <RightPanel />}
+        {view === 'edit' ? (
+          <>
+            {toolsDrawer && <div className="drawer-veil" onClick={() => setToolsDrawer(false)} />}
+            {/* display:contents on desktop (a plain grid column), a slide-in
+                drawer over the stage on phones */}
+            <div className={toolsDrawer ? 'tools-host open' : 'tools-host'}>
+              <EditPanel />
+            </div>
+          </>
+        ) : view === 'read' ? null : (
+          <RightPanel />
+        )}
       </div>
       <ActionBar />
-      <MobileNav tab={mobileTab} onChange={setMobileTab} />
+      <MobileNav
+        tab={view === 'edit' && toolsDrawer ? 'sigs' : mobileTab}
+        onChange={(t) => {
+          if (t === 'sigs' && view === 'edit') {
+            // Tools in the edit view is a drawer toggle, not a page switch —
+            // the document stays visible; make sure the stage is under it
+            setMobileTab('sign')
+            setToolsDrawer((v) => !v)
+            return
+          }
+          setToolsDrawer(false)
+          setMobileTab(t)
+        }}
+      />
       {studioOpen && <SignatureStudio />}
       {result && <ResultOverlay />}
       {dragDepth > 0 && (
