@@ -133,8 +133,13 @@ node scripts/edit-shot.mjs / edit-shot2.mjs / edit-shot3.mjs   # edit flows
 node scripts/ocr-scan.mjs           # scanned-doc retype via OCR
 node scripts/vertical-retype.mjs    # rotated text end-to-end
 node scripts/retype-fixes.mjs, gesture-heal.mjs, mobile-edit-fixes.mjs, pinch-probe*.mjs  # gestures
-node scripts/read-mode.mjs          # Read view: chrome-free, zoom, page nav, edits composite
+node scripts/read-mode.mjs          # Read view: chrome-free, zoom, page nav, edits+stamps composite
 node scripts/sign-zoom.mjs          # Sign canvas: tap-vs-slide, crisp zoom, stamp drag 1:1
+node scripts/zoom-anchor.mjs        # commit never repositions (pinch across fit, pill bursts)
+node scripts/view-continuity.mjs    # page+zoom+center survive Read->Sign->Edit; read default
+node scripts/smart-scan-budget.mjs  # OCR budget on multi-page scans; manual->smart retries
+node scripts/tools-drawer.mjs       # phone edit tools drawer (veil + back button close)
+node scripts/fonts-embed.mjs        # every bundled TTF embeds via pdf-lib (plain Node)
 node scripts/smart-letters.mjs, smart-contract.mjs             # detection
 node scripts/edit-sign-merge.mjs, edit-save-signature.mjs      # sign+edit merge
 node scripts/multi-stamps.mjs, annot-cover.mjs, cover-color.mjs
@@ -215,18 +220,34 @@ trackpads really send): WebView2's CDP acknowledges
 read preview builder): Edit shows your objects, Sign shows edits + live
 stamps, Read shows the final paper. One canvas, three views, one output.
 
-**1.2.0 artifacts BUILT (2026-08-11), all battery green** — ready to ship:
-- `release/DocuDesk-Setup-1.2.0.exe` (Electron full, signed)
-- `src-tauri/target/release/bundle/nsis/DocuDesk Lite_1.2.0_x64-setup.exe`
-- `.../apk/universal/release/DocuDesk_Lite_1.2.0_arm64-signed.apk`
-  (verified `CN=Signer Local` — sideload/update-safe)
-- `play-artifacts/DocuDesk-1.2.0-play.aab` (verified `CN=DocuDesk`, committed)
+**1.2.0** went out as a GitHub pre-release; the user tested on device and
+filed 7 findings — ALL FIXED as **1.2.1** (versionCode 1002001; 1.2.0's
+1002000 can't be reused on Play). The fixes, each with its own commit +
+regression:
+1. App opens in **Read** (store default; scripts set their view explicitly)
+2. **Continuity**: page+zoom+viewport-center survive Read↔Sign↔Edit per doc
+   (useZoomPan viewMemory; Edit syncs session.pageIndex both ways). Sign
+   still jumps to the placement page on signing intents; readers are never
+   yanked. Two traps: unmount cleanups run AFTER React nulls DOM refs
+   (track state continuously, never measure on exit); mount-time listener
+   effects miss containers when a stage first renders empty (callback ref).
+3. **Smart detect on scans**: two-pass (cheap sweep, then budgeted OCR:
+   last page first, ≤6 pages/25s, early-exit on confident evidence);
+   manual→smart retries empty verdicts; addGeneratedDoc/replaceDocBytes
+   kick detection in smart mode.
+4. **Zoom never repositions**: the sheet fills the sizer top-left (a
+   margin:auto sheet centered in the CSS-grown sizer = phantom gutter the
+   commit clamps away) + content-anchored commitRender.
+5. Tool hints auto-hide after 4.5s (sign hints stay — Detect again lives there)
+6. Phone edit tools = slide-in drawer (.tools-host, display:contents on
+   desktop; veil + back-button rung closes it)
+7. Fonts on phones: bundled Carlito (=Calibri) + Cousine (=Courier New),
+   OFL, same file: ids as the Windows fallback; attributions updated.
 
-**NEXT**: user pushes (see above), sideload-tests the APK (Read mode
-on-device checklist), uploads the AAB to the Play closed track (testers
-verify → promote to production; no 14-day wait, already met), then GitHub
-release: pre-release first if tester feedback is pending, stable once
-confirmed (3 public assets: both setups + arm64 APK; AAB stays out).
+**NEXT**: build 1.2.1 artifacts (APK sideload key / AAB upload key →
+play-artifacts / both installers), cut v1.2.1 GitHub pre-release, user
+re-tests on device, uploads AAB to the Play closed track (testers verify →
+promote to production), then flip the release to stable/Latest.
 
 Backlog (post-launch 1.2.x/1.3): open user-password PDFs (qpdf `--password`),
 encrypt-on-save (qpdf `--encrypt`), performance pass (need tester specifics),
