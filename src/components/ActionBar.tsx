@@ -212,6 +212,8 @@ export default function ActionBar() {
         : null
 
   if (view === 'edit') return <EditActionBar />
+  // reading is distraction-free: no action bar, the paper gets the room
+  if (view === 'read') return null
 
   return (
     <footer className="actionbar">

@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { useApp } from '../store'
 import { useEdit } from '../editor/editStore'
-import { CursorIcon, DocIcon, NibIcon, PenIcon, SquiggleIcon } from './icons'
+import { BookIcon, CursorIcon, DocIcon, NibIcon, PenIcon, SquiggleIcon } from './icons'
 
 export type MobileTab = 'docs' | 'sign' | 'sigs'
 
@@ -24,15 +24,22 @@ export default function MobileNav({
   // typing on a phone: yield the vertical space to the document
   if (editing) return null
 
-  // the middle/right tabs change meaning with the view: stage + its options
+  // the middle/right tabs change meaning with the view: stage + its options.
+  // Read view has no options panel at all, so the third tab disappears.
   const tabs: { id: MobileTab; label: string; icon: React.ReactNode; badge?: number }[] = [
     { id: 'docs', label: t('docs.title'), icon: <DocIcon size={18} />, badge: docCount },
     view === 'edit'
       ? { id: 'sign', label: t('view.edit'), icon: <PenIcon size={18} /> }
-      : { id: 'sign', label: t('tab.sign'), icon: <NibIcon size={18} /> },
-    view === 'edit'
-      ? { id: 'sigs', label: t('mobile.tools'), icon: <CursorIcon size={18} /> }
-      : { id: 'sigs', label: t('sig.title'), icon: <SquiggleIcon size={18} />, badge: sigCount },
+      : view === 'read'
+        ? { id: 'sign', label: t('view.read'), icon: <BookIcon size={18} /> }
+        : { id: 'sign', label: t('tab.sign'), icon: <NibIcon size={18} /> },
+    ...(view === 'read'
+      ? []
+      : [
+          view === 'edit'
+            ? { id: 'sigs' as const, label: t('mobile.tools'), icon: <CursorIcon size={18} /> }
+            : { id: 'sigs' as const, label: t('sig.title'), icon: <SquiggleIcon size={18} />, badge: sigCount },
+        ]),
   ]
 
   return (

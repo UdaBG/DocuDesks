@@ -11,6 +11,7 @@ import ResultOverlay from './components/ResultOverlay'
 import MobileNav, { type MobileTab } from './components/MobileNav'
 import EditStage from './components/edit/EditStage'
 import EditPanel from './components/edit/EditPanel'
+import ReadStage from './components/ReadStage'
 
 export default function App() {
   const { t } = useTranslation()
@@ -101,6 +102,12 @@ export default function App() {
     prevDocCount.current = docCount
   }, [docCount])
 
+  // Read view has no right panel — a phone parked on the tools/signatures
+  // tab would show a blank pane, so step back to the stage.
+  useEffect(() => {
+    if (view === 'read' && mobileTab === 'sigs') setMobileTab('sign')
+  }, [view, mobileTab])
+
   const onDrop = useCallback(
     async (e: React.DragEvent) => {
       e.preventDefault()
@@ -124,6 +131,7 @@ export default function App() {
   return (
     <div
       className="app"
+      data-view={view}
       onDragOver={(e) => e.preventDefault()}
       onDragEnter={(e) => {
         e.preventDefault()
@@ -135,8 +143,8 @@ export default function App() {
       <TopBar />
       <div className="layout" data-tab={mobileTab} data-view={view}>
         <DocumentList />
-        {view === 'edit' ? <EditStage /> : <Stage />}
-        {view === 'edit' ? <EditPanel /> : <RightPanel />}
+        {view === 'edit' ? <EditStage /> : view === 'read' ? <ReadStage /> : <Stage />}
+        {view === 'edit' ? <EditPanel /> : view === 'read' ? null : <RightPanel />}
       </div>
       <ActionBar />
       <MobileNav tab={mobileTab} onChange={setMobileTab} />

@@ -25,6 +25,9 @@ export default function TopBar() {
       </div>
 
       <div className="mode-toggle view-toggle" role="group" aria-label="View">
+        <button className={view === 'read' ? 'seg active' : 'seg'} onClick={() => setView('read')}>
+          {t('view.read')}
+        </button>
         <button className={view === 'sign' ? 'seg active' : 'seg'} onClick={() => setView('sign')}>
           {t('view.sign')}
         </button>

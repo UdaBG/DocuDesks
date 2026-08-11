@@ -8,6 +8,7 @@ import { detectSignatureSpot } from './lib/smartDetect'
 import { applyStamps, signedName, type StampInput } from './lib/pdfSign'
 import { useEdit } from './editor/editStore'
 import { buildEditedPdf } from './editor/exportPdf'
+import { isMobileTauri } from './platform/tauriApi'
 import type { EditSession } from './editor/types'
 
 /** Does a doc's edit session hold anything that would change its output? */
@@ -79,7 +80,7 @@ interface SignResult {
   paths: string[]
 }
 
-export type AppView = 'sign' | 'edit'
+export type AppView = 'read' | 'sign' | 'edit'
 
 interface AppState {
   docs: SigDoc[]
@@ -221,8 +222,17 @@ export const useApp = create<AppState>((set, get) => ({
       activeSignatureId: signatures[0]?.id ?? null,
       language,
     })
-    window.signer.onFilesOpened((paths) => void get().addFromPaths(paths))
-    if (pending.length) await get().addFromPaths(pending)
+    window.signer.onFilesOpened((paths) => {
+      // "Open with DocuDesk" on the phone is a request to *see* the file —
+      // land in the reader (the default-PDF-app experience). Files picked
+      // from inside the app keep whatever view the user is working in.
+      if (isMobileTauri()) set({ view: 'read' })
+      void get().addFromPaths(paths)
+    })
+    if (pending.length) {
+      if (isMobileTauri()) set({ view: 'read' })
+      await get().addFromPaths(pending)
+    }
   },
 
   setView(view) {

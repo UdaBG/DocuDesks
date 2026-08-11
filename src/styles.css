@@ -178,6 +178,10 @@ select,
   grid-template-columns: minmax(0, 1fr); /* single column that never exceeds the viewport */
   height: 100vh;
 }
+/* read view has no action bar — don't reserve its row */
+.app[data-view='read'] {
+  grid-template-rows: 54px 1fr;
+}
 
 .layout {
   display: grid;
@@ -186,6 +190,10 @@ select,
   /* let the panels shrink instead of a long file name blowing the grid wider
      than the viewport (which would stretch the whole app sideways) */
   min-width: 0;
+}
+/* the reader has no options panel — the paper takes its column */
+.layout[data-view='read'] {
+  grid-template-columns: 258px 1fr;
 }
 
 /* ---------- top bar ---------- */
@@ -1561,13 +1569,33 @@ input[type='range'] {
   display: flex;
   padding: 16px;
 }
+/* the reader has no toolbar or pages strip — the paper gets the full stage */
+.read-scroll {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  display: flex;
+  padding: 16px;
+}
 .zoom-sizer {
   margin: auto;
   flex: none;
   position: relative;
 }
-.edit-scroll .edit-sheet {
+.edit-scroll .edit-sheet,
+.read-scroll .edit-sheet {
   transform-origin: top left;
+}
+/* pan surface: one finger or mouse drags the paper, two fingers pinch */
+.read-overlay {
+  position: absolute;
+  inset: 0;
+  touch-action: none;
+  z-index: 2;
+  cursor: grab;
+}
+.read-overlay:active {
+  cursor: grabbing;
 }
 
 .zoom-pill {

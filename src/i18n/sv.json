@@ -74,6 +74,7 @@
   "action.signNone": "Signera dokument",
   "tab.sign": "Signera",
   "result.savedTo": "Sparat i {{dir}}",
+  "view.read": "Läs",
   "view.sign": "Signera",
   "view.edit": "Redigera",
   "tool.select": "Markera",

@@ -74,6 +74,7 @@
   "action.signNone": "Sign documents",
   "tab.sign": "Sign",
   "result.savedTo": "Saved to {{dir}}",
+  "view.read": "Read",
   "view.sign": "Sign",
   "view.edit": "Edit",
   "tool.select": "Select",

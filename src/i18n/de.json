@@ -74,6 +74,7 @@
   "action.signNone": "Dokumente unterschreiben",
   "tab.sign": "Signieren",
   "result.savedTo": "Gespeichert unter {{dir}}",
+  "view.read": "Lesen",
   "view.sign": "Signieren",
   "view.edit": "Bearbeiten",
   "tool.select": "Auswählen",

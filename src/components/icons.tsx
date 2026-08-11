@@ -101,6 +101,16 @@ export function SparkIcon({ size, className }: IconProps) {
   ))
 }
 
+/** Open book — the Read view. */
+export function BookIcon({ size, className }: IconProps) {
+  return svg(size, className, (
+    <>
+      <path d="M12 6.5C10.7 5 8.8 4.2 6.5 4.2c-1.2 0-2.4.2-3.5.7v13.6c1.1-.5 2.3-.7 3.5-.7 2.3 0 4.2.8 5.5 2.3 1.3-1.5 3.2-2.3 5.5-2.3 1.2 0 2.4.2 3.5.7V4.9c-1.1-.5-2.3-.7-3.5-.7-2.3 0-4.2.8-5.5 2.3Z" />
+      <path d="M12 6.5v13.6" />
+    </>
+  ))
+}
+
 export function DocIcon({ size, className }: IconProps) {
   return svg(size, className, (
     <>
