@@ -244,8 +244,20 @@ regression:
 7. Fonts on phones: bundled Carlito (=Calibri) + Cousine (=Courier New),
    OFL, same file: ids as the Windows fallback; attributions updated.
 
-**NEXT**: build 1.2.1 artifacts (APK sideload key / AAB upload key →
-play-artifacts / both installers), cut v1.2.1 GitHub pre-release, user
+**1.2.1** shipped as a pre-release; device testing found 3 more issues —
+ALL FIXED as **1.2.2** (versionCode 1002002):
+1. Long locales (Sinhala) wrap the view toggle to a 2nd top-bar row which
+   Read view CLIPPED: the desktop `.app[data-view='read']` fixed-54px-row
+   rule out-specifies the mobile auto rows — the phone media query now
+   re-declares them. ⚠ any top-level `.app[...]` rule needs a mobile twin.
+2. Typing survives panning: the overlay committed the open text box on
+   pointerDOWN; now tap-vs-slide — slide pans with the box open + keyboard
+   up, clean tap commits (gesture-heal.mjs step 2b).
+3. Doc-card duplicate/remove buttons were hover-revealed (opacity 0) —
+   invisible on touch; now always visible (tools-drawer.mjs asserts).
+
+**NEXT**: build 1.2.2 artifacts (APK sideload key / AAB upload key →
+play-artifacts / both installers), cut v1.2.2 GitHub pre-release, user
 re-tests on device, uploads AAB to the Play closed track (testers verify →
 promote to production), then flip the release to stable/Latest.
 
