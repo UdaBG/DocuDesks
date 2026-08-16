@@ -163,6 +163,18 @@ interface AppState {
   /** open a view-password-protected doc: decrypt with the given password.
    *  false = wrong password (the doc stays locked) */
   unlockWithPassword(docId: string, password: string): Promise<boolean>
+  /** locked docs whose password prompt was dismissed — re-armed by selecting
+   *  the doc again or switching views */
+  pwDeclined: string[]
+  dismissPasswordPrompt(docId: string): void
+  /** remove several docs at once; one undo restores them all */
+  removeDocs(ids: string[]): void
+  /** save encrypted copies of several docs with ONE password/output choice */
+  protectDocs(
+    docIds: string[],
+    password: string,
+    bits: 128 | 256,
+  ): Promise<{ saved: number; firstName: string | null }>
   addSignature(sig: Omit<SavedSignature, 'id' | 'createdAt'>): void
   deleteSignature(id: string): void
   setActiveSignature(id: string): void
@@ -208,6 +220,7 @@ export const useApp = create<AppState>((set, get) => ({
   extraStamps: [],
   dateStamps: [],
   dateStyle: { format: 'dmy', color: '#1c1c1e', fontId: 'print' },
+  pwDeclined: [],
   primaryRemoved: false,
   undoStash: null,
   signing: null,
@@ -262,7 +275,8 @@ export const useApp = create<AppState>((set, get) => ({
   },
 
   setView(view) {
-    set({ view })
+    // switching views also re-offers any dismissed password prompts
+    set({ view, pwDeclined: [] })
   },
 
   duplicateDoc(id) {
@@ -388,7 +402,11 @@ export const useApp = create<AppState>((set, get) => ({
     const prevSelected = get().selectedDocId
     set((s) => ({
       docs: [...s.docs, ...added],
-      selectedDocId: s.selectedDocId ?? added.find((d) => d.status !== 'error')?.id ?? null,
+      // a locked doc is selectable on purpose: opening a protected PDF as the
+      // first document must select it so the password prompt can appear —
+      // skipping it left a BLANK stage and no way in
+      selectedDocId:
+        s.selectedDocId ?? added.find((d) => d.status !== 'error' || d.locked)?.id ?? null,
       result: null,
     }))
     const { selectedDocId, docs, mode, placement, view } = get()
@@ -469,6 +487,29 @@ export const useApp = create<AppState>((set, get) => ({
     })
   },
 
+  removeDocs(ids) {
+    const state = get()
+    const entries: { doc: SigDoc; index: number }[] = []
+    const sessions: Record<string, EditSession> = {}
+    state.docs.forEach((doc, index) => {
+      if (!ids.includes(doc.id)) return
+      entries.push({ doc, index })
+      const session = useEdit.getState().sessions[doc.id]
+      if (session) sessions[doc.id] = session
+      useEdit.getState().dropSession(doc.id)
+    })
+    if (!entries.length) return
+    set((s) => {
+      const docs = s.docs.filter((d) => !ids.includes(d.id))
+      const selectedDocId =
+        s.selectedDocId && ids.includes(s.selectedDocId)
+          ? (docs.find((d) => d.status !== 'error' || d.locked)?.id ?? null)
+          : s.selectedDocId
+      // one stash, one undo, everything back where it was
+      return { docs, selectedDocId, undoStash: { entries, sessions } }
+    })
+  },
+
   clearDocs() {
     const state = get()
     if (!state.docs.length) return
@@ -528,7 +569,14 @@ export const useApp = create<AppState>((set, get) => ({
     // selected document starts at its first page
     const pl = effectivePlacement(doc, mode, placement)
     const page = view === 'sign' && pl ? resolvePageIndex(pl, doc.pageCount) : 0
-    set({ selectedDocId: id, previewPage: page, selectedStampId: null })
+    set((s) => ({
+      selectedDocId: id,
+      previewPage: page,
+      selectedStampId: null,
+      // tapping a locked doc (even the already-selected one) re-arms its
+      // password prompt after a "Not now"
+      pwDeclined: s.pwDeclined.filter((x) => x !== id),
+    }))
   },
 
   setPreviewPage(page) {
@@ -698,15 +746,36 @@ export const useApp = create<AppState>((set, get) => ({
   },
 
   async protectDoc(docId, password, bits) {
-    const doc = get().docs.find((d) => d.id === docId)
-    if (!doc || !password) return null
-    const finalized = await finalizedBytesFor(doc)
-    const out = await encryptPdf(finalized, password, bits)
+    const { saved, firstName } = await get().protectDocs([docId], password, bits)
+    return saved ? firstName : null
+  },
+
+  async protectDocs(docIds, password, bits) {
+    const docs = get().docs.filter((d) => docIds.includes(d.id) && d.status !== 'error')
+    if (!docs.length || !password) return { saved: 0, firstName: null }
+    // encrypt everything BEFORE asking where to save — a slow qpdf run after
+    // the dialog would look like a hang
+    const outputs: { name: string; bytes: Uint8Array }[] = []
+    for (const doc of docs) {
+      const finalized = await finalizedBytesFor(doc)
+      outputs.push({ name: protectedName(doc.name), bytes: await encryptPdf(finalized, password, bits) })
+    }
     const dir = await window.signer.chooseOutputDir()
-    if (!dir) return null
-    const name = protectedName(doc.name)
-    const written = await window.signer.writeSigned(dir, name, out)
-    return written ? name : null
+    if (!dir) return { saved: 0, firstName: null }
+    let saved = 0
+    let firstName: string | null = null
+    for (const out of outputs) {
+      const written = await window.signer.writeSigned(dir, out.name, out.bytes)
+      if (written) {
+        saved++
+        if (!firstName) firstName = out.name
+      }
+    }
+    return { saved, firstName }
+  },
+
+  dismissPasswordPrompt(docId) {
+    set((s) => ({ pwDeclined: [...s.pwDeclined.filter((x) => x !== docId), docId] }))
   },
 
   async unlockWithPassword(docId, password) {

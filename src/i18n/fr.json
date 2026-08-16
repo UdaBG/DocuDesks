@@ -15,7 +15,7 @@
   "docs.status.signed": "Signé",
   "docs.status.noTarget": "Aucun emplacement trouvé",
   "docs.status.error": "Échec",
-  "docs.remove": "Retirer le document",
+  "docs.remove": "Retirer",
   "stage.stackMore": "+{{count}} dessous",
   "stage.page": "Page {{page}} / {{pages}}",
   "stage.noSignature": "Créez une signature, puis glissez-la en place",
@@ -249,7 +249,7 @@
   "guide.tabGuide": "Mode d'emploi",
   "guide.tabLicenses": "Licences",
   "guide.docs.title": "Ajouter des documents",
-  "guide.docs.body": "Touchez « Ajouter des PDF », partagez un fichier vers DocuDesk ou utilisez « Ouvrir avec ». Les documents forment une pile : un seul réglage de signature s'applique à tous, la pile entière se signe donc d'un coup. Chaque carte a des boutons pour dupliquer, protéger ou retirer ce document, et le panneau Documents peut en fusionner plusieurs. Tout reste sur cet appareil.",
+  "guide.docs.body": "Touchez « Ajouter des PDF », partagez un fichier vers DocuDesk ou utilisez « Ouvrir avec ». Les documents forment une pile : un seul réglage de signature s'applique à tous, la pile entière se signe donc d'un coup. Chaque carte a des boutons pour dupliquer, protéger ou retirer ce document, et le panneau Documents peut en fusionner plusieurs. Tout reste sur cet appareil. Maintenez un document pour en sélectionner plusieurs à la fois.",
   "guide.views.title": "Lecture, Signer, Modifier",
   "guide.views.body": "Changez de vue avec le sélecteur en haut. Lecture montre le papier fini, sans rien devant. Signer place signatures et dates. Modifier change le contenu lui-même. Zoomez partout en pinçant ou avec Ctrl+molette — votre page, le zoom et la position vous suivent d'une vue à l'autre.",
   "guide.sign.title": "Signer",
@@ -261,5 +261,9 @@
   "guide.pages.title": "Pages et fusion",
   "guide.pages.body": "La bande en bas de la vue Modifier gère les pages : touchez pour aller à une page, glissez une vignette pour réordonner, + insère une page vierge, le bouton copie duplique la page courante et la corbeille la supprime. Fusionnez plusieurs PDF en un depuis le panneau Documents.",
   "guide.save.title": "Enregistrer et protéger",
-  "guide.save.body": "« Signer » enregistre des copies signées de toute la pile ; « Enregistrer le PDF modifié » sauvegarde le document courant ; l'impression marche depuis les deux. « Protéger le PDF » enregistre une copie qui demande un mot de passe à l'ouverture — chiffrée AES, entièrement sur cet appareil. DocuDesk ouvre aussi les PDF protégés : il demande simplement leur mot de passe."
+  "guide.save.body": "« Signer » enregistre des copies signées de toute la pile ; « Enregistrer le PDF modifié » sauvegarde le document courant ; l'impression marche depuis les deux. « Protéger le PDF » enregistre une copie qui demande un mot de passe à l'ouverture — chiffrée AES, entièrement sur cet appareil. DocuDesk ouvre aussi les PDF protégés : il demande simplement leur mot de passe.",
+  "docs.selected": "{{count}} sélectionnés",
+  "docs.selectAll": "Tout sélectionner",
+  "protect.titleMany": "Protéger {{count}} documents",
+  "protect.savedMany": "{{count}} copies protégées enregistrées"
 }

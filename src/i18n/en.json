@@ -15,7 +15,7 @@
   "docs.status.signed": "Signed",
   "docs.status.noTarget": "No spot found",
   "docs.status.error": "Failed",
-  "docs.remove": "Remove document",
+  "docs.remove": "Remove",
   "stage.stackMore": "+{{count}} beneath",
   "stage.page": "Page {{page}} / {{pages}}",
   "stage.noSignature": "Create a signature, then drag it into place",
@@ -249,7 +249,7 @@
   "guide.tabGuide": "How to use",
   "guide.tabLicenses": "Licenses",
   "guide.docs.title": "Add documents",
-  "guide.docs.body": "Tap Add PDFs, share a file to DocuDesk, or use \"Open with\". Documents form a stack: one signature setup applies to every document, so a whole pile signs at once. Each card has buttons to duplicate, protect or remove that document, and the Documents panel can merge several into one. Everything stays on this device.",
+  "guide.docs.body": "Tap Add PDFs, share a file to DocuDesk, or use \"Open with\". Documents form a stack: one signature setup applies to every document, so a whole pile signs at once. Each card has buttons to duplicate, protect or remove that document, and the Documents panel can merge several into one. Everything stays on this device. Hold a document to select several at once.",
   "guide.views.title": "Read, Sign, Edit",
   "guide.views.body": "Switch views with the toggle at the top. Read shows the finished paper with nothing in the way. Sign places signatures and dates. Edit changes the content itself. Pinch or Ctrl+scroll to zoom anywhere — your page, zoom and position follow you between views.",
   "guide.sign.title": "Sign",
@@ -261,5 +261,9 @@
   "guide.pages.title": "Pages & merge",
   "guide.pages.body": "The strip at the bottom of the Edit view manages pages: tap to jump, drag a thumbnail to reorder, + inserts a blank page, the copy button duplicates the current page and the trash removes it. Merge several PDFs into one from the Documents panel.",
   "guide.save.title": "Save & protect",
-  "guide.save.body": "Sign saves signed copies of the whole stack; Save edited PDF saves the current document; printing works from both. Protect PDF saves a copy that needs a password to open — AES-encrypted, entirely on this device. DocuDesk also opens protected PDFs: it simply asks for their password."
+  "guide.save.body": "Sign saves signed copies of the whole stack; Save edited PDF saves the current document; printing works from both. Protect PDF saves a copy that needs a password to open — AES-encrypted, entirely on this device. DocuDesk also opens protected PDFs: it simply asks for their password.",
+  "docs.selected": "{{count}} selected",
+  "docs.selectAll": "Select all",
+  "protect.titleMany": "Protect {{count}} documents",
+  "protect.savedMany": "Saved {{count}} protected copies"
 }

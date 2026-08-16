@@ -15,7 +15,7 @@
   "docs.status.signed": "Signerat",
   "docs.status.noTarget": "Ingen plats hittad",
   "docs.status.error": "Misslyckades",
-  "docs.remove": "Ta bort dokument",
+  "docs.remove": "Ta bort",
   "stage.stackMore": "+{{count}} under",
   "stage.page": "Sida {{page}} / {{pages}}",
   "stage.noSignature": "Skapa en signatur och dra den på plats",
@@ -249,7 +249,7 @@
   "guide.tabGuide": "Så funkar det",
   "guide.tabLicenses": "Licenser",
   "guide.docs.title": "Lägg till dokument",
-  "guide.docs.body": "Tryck på \"Lägg till PDF:er\", dela en fil till DocuDesk eller använd \"Öppna med\". Dokumenten bildar en hög: en signaturinställning gäller för alla, så hela högen signeras på en gång. Varje kort har knappar för att duplicera, skydda eller ta bort dokumentet, och panelen Dokument kan slå ihop flera till ett. Allt stannar på den här enheten.",
+  "guide.docs.body": "Tryck på \"Lägg till PDF:er\", dela en fil till DocuDesk eller använd \"Öppna med\". Dokumenten bildar en hög: en signaturinställning gäller för alla, så hela högen signeras på en gång. Varje kort har knappar för att duplicera, skydda eller ta bort dokumentet, och panelen Dokument kan slå ihop flera till ett. Allt stannar på den här enheten. Håll ett dokument intryckt för att markera flera på en gång.",
   "guide.views.title": "Läs, Signera, Redigera",
   "guide.views.body": "Byt vy med väljaren högst upp. Läs visar det färdiga papperet utan något i vägen. Signera placerar signaturer och datum. Redigera ändrar själva innehållet. Nyp eller Ctrl+skrolla för att zooma var som helst — sida, zoom och position följer med mellan vyerna.",
   "guide.sign.title": "Signera",
@@ -261,5 +261,9 @@
   "guide.pages.title": "Sidor & sammanfoga",
   "guide.pages.body": "Remsan längst ner i redigeringsvyn hanterar sidor: tryck för att hoppa, dra en miniatyr för att ändra ordning, + infogar en tom sida, kopieringsknappen duplicerar aktuell sida och papperskorgen tar bort den. Slå ihop flera PDF:er till en från panelen Dokument.",
   "guide.save.title": "Spara & skydda",
-  "guide.save.body": "\"Signera\" sparar signerade kopior av hela högen; \"Spara redigerad PDF\" sparar aktuellt dokument; utskrift funkar från båda. \"Skydda PDF\" sparar en kopia som kräver lösenord för att öppnas — AES-krypterad, helt på den här enheten. DocuDesk öppnar även skyddade PDF:er: den frågar helt enkelt efter lösenordet."
+  "guide.save.body": "\"Signera\" sparar signerade kopior av hela högen; \"Spara redigerad PDF\" sparar aktuellt dokument; utskrift funkar från båda. \"Skydda PDF\" sparar en kopia som kräver lösenord för att öppnas — AES-krypterad, helt på den här enheten. DocuDesk öppnar även skyddade PDF:er: den frågar helt enkelt efter lösenordet.",
+  "docs.selected": "{{count}} valda",
+  "docs.selectAll": "Markera alla",
+  "protect.titleMany": "Skydda {{count}} dokument",
+  "protect.savedMany": "{{count}} skyddade kopior sparade"
 }

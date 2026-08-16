@@ -150,7 +150,7 @@ export default function RightPanel() {
         </button>
         <p className="muted">{t('protect.hint')}</p>
       </section>
-      {protectOpen && doc && <ProtectDialog docId={doc.id} onClose={() => setProtectOpen(false)} />}
+      {protectOpen && doc && <ProtectDialog docIds={[doc.id]} onClose={() => setProtectOpen(false)} />}
     </aside>
   )
 }

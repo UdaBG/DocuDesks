@@ -15,7 +15,7 @@
   "docs.status.signed": "Firmado",
   "docs.status.noTarget": "Sin lugar detectado",
   "docs.status.error": "Error",
-  "docs.remove": "Quitar documento",
+  "docs.remove": "Quitar",
   "stage.stackMore": "+{{count}} debajo",
   "stage.page": "Página {{page}} / {{pages}}",
   "stage.noSignature": "Crea una firma y arrástrala a su lugar",
@@ -249,7 +249,7 @@
   "guide.tabGuide": "Cómo se usa",
   "guide.tabLicenses": "Licencias",
   "guide.docs.title": "Añadir documentos",
-  "guide.docs.body": "Toca \"Añadir PDFs\", comparte un archivo con DocuDesk o usa \"Abrir con\". Los documentos forman una pila: una sola configuración de firma se aplica a todos, así que la pila entera se firma de una vez. Cada tarjeta tiene botones para duplicar, proteger o quitar ese documento, y el panel Documentos puede unir varios en uno. Todo permanece en este dispositivo.",
+  "guide.docs.body": "Toca \"Añadir PDFs\", comparte un archivo con DocuDesk o usa \"Abrir con\". Los documentos forman una pila: una sola configuración de firma se aplica a todos, así que la pila entera se firma de una vez. Cada tarjeta tiene botones para duplicar, proteger o quitar ese documento, y el panel Documentos puede unir varios en uno. Todo permanece en este dispositivo. Mantén pulsado un documento para seleccionar varios a la vez.",
   "guide.views.title": "Leer, Firmar, Editar",
   "guide.views.body": "Cambia de vista con el selector superior. Leer muestra el papel terminado sin estorbos. Firmar coloca firmas y fechas. Editar cambia el contenido en sí. Haz zoom en cualquier parte con dos dedos o Ctrl+rueda: tu página, zoom y posición te siguen entre vistas.",
   "guide.sign.title": "Firmar",
@@ -261,5 +261,9 @@
   "guide.pages.title": "Páginas y unir",
   "guide.pages.body": "La tira inferior de la vista Editar gestiona las páginas: toca para saltar, arrastra una miniatura para reordenar, + inserta una página en blanco, el botón de copia duplica la página actual y la papelera la elimina. Une varios PDFs en uno desde el panel Documentos.",
   "guide.save.title": "Guardar y proteger",
-  "guide.save.body": "\"Firmar\" guarda copias firmadas de toda la pila; \"Guardar PDF editado\" guarda el documento actual; se puede imprimir desde ambos. \"Proteger PDF\" guarda una copia que pide contraseña para abrirse, cifrada con AES por completo en este dispositivo. DocuDesk también abre PDFs protegidos: simplemente pide su contraseña."
+  "guide.save.body": "\"Firmar\" guarda copias firmadas de toda la pila; \"Guardar PDF editado\" guarda el documento actual; se puede imprimir desde ambos. \"Proteger PDF\" guarda una copia que pide contraseña para abrirse, cifrada con AES por completo en este dispositivo. DocuDesk también abre PDFs protegidos: simplemente pide su contraseña.",
+  "docs.selected": "{{count}} seleccionados",
+  "docs.selectAll": "Seleccionar todo",
+  "protect.titleMany": "Proteger {{count}} documentos",
+  "protect.savedMany": "Se guardaron {{count}} copias protegidas"
 }

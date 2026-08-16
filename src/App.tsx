@@ -39,12 +39,15 @@ export default function App() {
   const [unlockBusy, setUnlockBusy] = useState(false)
   // protected docs the user chose to edit without unlocking — don't re-nag
   const [unlockDeclined, setUnlockDeclined] = useState<string[]>([])
-  // view-password prompt (files that cannot even open without a password)
+  // view-password prompt (files that cannot even open without a password);
+  // the decline list lives in the store so selecting the doc again or
+  // switching views re-arms it
   const unlockWithPassword = useApp((s) => s.unlockWithPassword)
+  const pwDeclined = useApp((s) => s.pwDeclined)
+  const dismissPasswordPrompt = useApp((s) => s.dismissPasswordPrompt)
   const [pwInput, setPwInput] = useState('')
   const [pwWrong, setPwWrong] = useState(false)
   const [pwBusy, setPwBusy] = useState(false)
-  const [pwDeclined, setPwDeclined] = useState<string[]>([])
 
   // Offer to unlock a protected document as soon as it's the active doc in
   // Edit *or* Sign — a protected file cannot be rebuilt, so both signing and
@@ -55,11 +58,10 @@ export default function App() {
     !!selectedDoc?.encrypted &&
     !unlockDeclined.includes(selectedDoc.id)
 
-  // a view-password file can't even render — ask in every view. Re-selecting
-  // the document is the retry gesture after a dismissal.
+  // a view-password file can't even render — ask in every view. Tapping the
+  // document again or switching views re-arms a dismissed prompt.
   const promptPassword = !!selectedDoc?.locked && !pwDeclined.includes(selectedDoc.id)
   useEffect(() => {
-    setPwDeclined((d) => d.filter((id) => id !== selectedDocId))
     setPwInput('')
     setPwWrong(false)
   }, [selectedDocId])
@@ -265,7 +267,7 @@ export default function App() {
               <button
                 className="ghost-btn"
                 disabled={pwBusy}
-                onClick={() => setPwDeclined((d) => [...d, selectedDoc.id])}
+                onClick={() => dismissPasswordPrompt(selectedDoc.id)}
               >
                 {t('unlock.cancel')}
               </button>

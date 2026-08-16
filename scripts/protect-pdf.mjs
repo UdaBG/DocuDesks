@@ -153,6 +153,36 @@ try {
   await waitFor(`!!document.querySelector('.read-stage canvas')`, 'unlocked doc renders')
   console.log('round-trip: protected file opened in-app with its password')
 
+  // ---- 7. a protected file opened ALONE auto-selects and prompts ------------
+  // (locked docs were skipped by auto-selection: blank stage, no prompt)
+  await evaluate(`(${S}.clearDocs(), true)`)
+  await waitFor(`${S}.docs.length === 0`, 'docs cleared')
+  await evaluate(`${S}.addFromPaths([${JSON.stringify(savedPath)}])`)
+  await waitFor(`${S}.docs.length === 1`, 'protected file re-added')
+  const auto = await evaluate(`(() => ({
+    selected: ${S}.selectedDocId === ${S}.docs[0].id,
+    prompt: document.querySelectorAll('.protect-field input').length === 1,
+  }))()`)
+  console.log('opened alone:', JSON.stringify(auto))
+  if (!auto.selected) fail('a lone protected file must be auto-selected')
+  if (!auto.prompt) fail('the password prompt must appear without any extra tap')
+
+  // ---- 8. "Not now" is not a dead end ---------------------------------------
+  await evaluate(`(() => { [...document.querySelectorAll('.confirm-dialog .ghost-btn')].pop().click(); return true })()`)
+  await sleep(300)
+  if (await evaluate(`document.querySelectorAll('.protect-field input').length === 1`))
+    fail('Not now should dismiss the prompt')
+  // tapping the doc again re-arms it
+  await evaluate(`(${S}.selectDoc(${S}.docs[0].id), true)`)
+  await waitFor(`document.querySelectorAll('.protect-field input').length === 1`, 're-prompt on re-select')
+  console.log('re-select re-arms the prompt')
+  // and so does switching views
+  await evaluate(`(() => { [...document.querySelectorAll('.confirm-dialog .ghost-btn')].pop().click(); return true })()`)
+  await sleep(300)
+  await evaluate(`(${S}.setView('sign'), true)`)
+  await waitFor(`document.querySelectorAll('.protect-field input').length === 1`, 're-prompt on view switch')
+  console.log('view switch re-arms the prompt')
+
   console.log(process.exitCode ? 'DONE WITH FAILURES' : 'ALL CHECKS PASSED')
 } catch (e) {
   console.error('ERROR:', e.message)

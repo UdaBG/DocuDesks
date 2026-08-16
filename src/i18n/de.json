@@ -15,7 +15,7 @@
   "docs.status.signed": "Unterschrieben",
   "docs.status.noTarget": "Keine Stelle gefunden",
   "docs.status.error": "Fehlgeschlagen",
-  "docs.remove": "Dokument entfernen",
+  "docs.remove": "Entfernen",
   "stage.stackMore": "+{{count}} darunter",
   "stage.page": "Seite {{page}} / {{pages}}",
   "stage.noSignature": "Erstellen Sie eine Unterschrift und ziehen Sie sie an die richtige Stelle",
@@ -249,7 +249,7 @@
   "guide.tabGuide": "Anleitung",
   "guide.tabLicenses": "Lizenzen",
   "guide.docs.title": "Dokumente hinzufügen",
-  "guide.docs.body": "Tippe auf \"PDFs hinzufügen\", teile eine Datei mit DocuDesk oder nutze \"Öffnen mit\". Dokumente bilden einen Stapel: eine Signatur-Einstellung gilt für alle, sodass der ganze Stapel auf einmal signiert wird. Jede Karte hat Knöpfe zum Duplizieren, Schützen und Entfernen; im Dokumente-Bereich lassen sich mehrere zu einem zusammenführen. Alles bleibt auf diesem Gerät.",
+  "guide.docs.body": "Tippe auf \"PDFs hinzufügen\", teile eine Datei mit DocuDesk oder nutze \"Öffnen mit\". Dokumente bilden einen Stapel: eine Signatur-Einstellung gilt für alle, sodass der ganze Stapel auf einmal signiert wird. Jede Karte hat Knöpfe zum Duplizieren, Schützen und Entfernen; im Dokumente-Bereich lassen sich mehrere zu einem zusammenführen. Alles bleibt auf diesem Gerät. Halte ein Dokument gedrückt, um mehrere auf einmal auszuwählen.",
   "guide.views.title": "Lesen, Signieren, Bearbeiten",
   "guide.views.body": "Wechsle die Ansicht mit dem Umschalter oben. Lesen zeigt das fertige Blatt ohne Ablenkung. Signieren platziert Unterschriften und Datumsstempel. Bearbeiten ändert den Inhalt selbst. Zoome überall mit zwei Fingern oder Strg+Scrollen — Seite, Zoom und Position wandern zwischen den Ansichten mit.",
   "guide.sign.title": "Signieren",
@@ -261,5 +261,9 @@
   "guide.pages.title": "Seiten & Zusammenführen",
   "guide.pages.body": "Die Leiste unten in der Bearbeiten-Ansicht verwaltet Seiten: Tippen springt, Ziehen ordnet neu, + fügt eine leere Seite ein, der Kopier-Knopf dupliziert die aktuelle Seite, der Papierkorb entfernt sie. Mehrere PDFs führst du im Dokumente-Bereich zu einem zusammen.",
   "guide.save.title": "Speichern & Schützen",
-  "guide.save.body": "\"Signieren\" speichert signierte Kopien des ganzen Stapels; \"Bearbeitetes PDF speichern\" sichert das aktuelle Dokument; Drucken geht aus beiden. \"PDF schützen\" speichert eine Kopie, die zum Öffnen ein Passwort verlangt — AES-verschlüsselt, vollständig auf diesem Gerät. DocuDesk öffnet geschützte PDFs auch: es fragt einfach nach dem Passwort."
+  "guide.save.body": "\"Signieren\" speichert signierte Kopien des ganzen Stapels; \"Bearbeitetes PDF speichern\" sichert das aktuelle Dokument; Drucken geht aus beiden. \"PDF schützen\" speichert eine Kopie, die zum Öffnen ein Passwort verlangt — AES-verschlüsselt, vollständig auf diesem Gerät. DocuDesk öffnet geschützte PDFs auch: es fragt einfach nach dem Passwort.",
+  "docs.selected": "{{count}} ausgewählt",
+  "docs.selectAll": "Alle auswählen",
+  "protect.titleMany": "{{count}} Dokumente schützen",
+  "protect.savedMany": "{{count}} geschützte Kopien gespeichert"
 }

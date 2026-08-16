@@ -3,19 +3,25 @@ import { useTranslation } from 'react-i18next'
 import { useApp } from '../store'
 
 /**
- * Protect a document with a password (sign view). The saved copy is the
+ * Protect one or more documents with a password. Each saved copy is the
  * FINALIZED paper — edits, signatures and date stamps baked — encrypted
  * offline with the bundled qpdf. AES-256 unless the user needs a very old
  * reader to open it.
  */
-export default function ProtectDialog({ docId, onClose }: { docId: string; onClose: () => void }) {
+export default function ProtectDialog({
+  docIds,
+  onClose,
+}: {
+  docIds: string[]
+  onClose: () => void
+}) {
   const { t } = useTranslation()
-  const protectDoc = useApp((s) => s.protectDoc)
+  const protectDocs = useApp((s) => s.protectDocs)
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [bits, setBits] = useState<128 | 256>(256)
   const [busy, setBusy] = useState(false)
-  const [savedName, setSavedName] = useState<string | null>(null)
+  const [savedMsg, setSavedMsg] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const mismatch = confirm.length > 0 && password !== confirm
@@ -25,9 +31,10 @@ export default function ProtectDialog({ docId, onClose }: { docId: string; onClo
     setBusy(true)
     setError(null)
     try {
-      const saved = await protectDoc(docId, password, bits)
-      if (saved) setSavedName(saved)
-      // null = user dismissed the save dialog — keep this one open, no error
+      const { saved, firstName } = await protectDocs(docIds, password, bits)
+      if (saved === 1 && firstName) setSavedMsg(t('protect.saved', { name: firstName }))
+      else if (saved > 1) setSavedMsg(t('protect.savedMany', { count: saved }))
+      // 0 = user dismissed the save dialog — keep this one open, no error
     } catch {
       setError(t('protect.failed'))
     } finally {
@@ -43,10 +50,10 @@ export default function ProtectDialog({ docId, onClose }: { docId: string; onClo
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2>{t('protect.title')}</h2>
-        {savedName ? (
+        <h2>{docIds.length > 1 ? t('protect.titleMany', { count: docIds.length }) : t('protect.title')}</h2>
+        {savedMsg ? (
           <>
-            <p className="muted">{t('protect.saved', { name: savedName })}</p>
+            <p className="muted">{savedMsg}</p>
             <div className="dialog-actions">
               <div className="spacer" />
               <button className="btn-primary" onClick={onClose}>
