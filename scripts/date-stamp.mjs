@@ -112,6 +112,23 @@ try {
   console.log('drag: x', x0.toFixed(3), '->', x1.toFixed(3))
   if (Math.abs(x1 - x0) < 0.02) fail('date stamp did not move')
 
+  // ---- 3b. the image never escapes its box, however small the zoom ---------
+  // (inline imgs ride a text baseline: thin date strips overflowed below it)
+  for (let i = 0; i < 3; i++) {
+    await evaluate(`(document.querySelector('.zoom-pill button:first-child').click(), true)`)
+    await sleep(400)
+  }
+  await sleep(1200)
+  const contain = await evaluate(`(() => {
+    const box = document.querySelector('.sig-box.date-stamp').getBoundingClientRect()
+    const img = document.querySelector('.sig-box.date-stamp img').getBoundingClientRect()
+    return { oy: +(img.bottom - box.bottom).toFixed(1), ox: +(img.right - box.right).toFixed(1), boxH: +box.height.toFixed(1) }
+  })()`)
+  console.log('zoomed-out containment:', JSON.stringify(contain))
+  if (contain.oy > 0.5 || contain.ox > 0.5) fail(`date image escapes its box when zoomed out (${JSON.stringify(contain)})`)
+  await evaluate(`(document.querySelector('.zoom-pill .zoom-value').click(), true)`)
+  await sleep(1000)
+
   // ---- 4. read view composites the date -------------------------------------
   // park the stamp over a known-empty region, then sample it in Read
   await evaluate(`(${S}.updateDateStamp(${S}.dateStamps[0].id, { x: 0.36, yb: 0.56, w: 0.26 }), true)`)

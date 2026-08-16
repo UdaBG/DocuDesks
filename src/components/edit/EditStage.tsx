@@ -1713,7 +1713,10 @@ export default function EditStage() {
                 <textarea
                   key={o.id}
                   className="eo-textarea"
-                  autoFocus
+                  // focus WITHOUT the browser's scroll-into-view: the box was
+                  // just tapped (already visible) and the native jolt reads
+                  // as the preview jumping
+                  ref={(el) => el?.focus({ preventScroll: true })}
                   value={o.text}
                   placeholder={t('edit.textPlaceholder')}
                   style={{ ...textStyle, background: o.highlight ?? 'rgba(47, 69, 196, 0.04)' }}
