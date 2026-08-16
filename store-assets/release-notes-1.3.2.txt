@@ -1,0 +1,18 @@
+<en-US>
+First public release! Sign, edit and read PDFs completely offline. Smart signature detection, date stamps, retype text (even on scans, via OCR), manage and merge pages, and protect PDFs with AES-256 passwords. Free forever — no ads, no accounts, no internet access at all.
+</en-US>
+<de-DE>
+Erste öffentliche Version! PDFs vollständig offline signieren, bearbeiten und lesen. Intelligente Signaturerkennung, Datumsstempel, Text neu tippen (auch in Scans, per OCR), Seiten verwalten und zusammenführen, PDFs mit AES-256-Passwort schützen. Für immer kostenlos — keine Werbung, keine Konten, kein Internetzugriff.
+</de-DE>
+<es-ES>
+¡Primera versión pública! Firma, edita y lee PDFs sin conexión. Detección inteligente de firmas, sellos de fecha, reescritura de texto (incluso en escaneos, con OCR), gestión y unión de páginas, y protección de PDFs con contraseña AES-256. Gratis para siempre: sin anuncios, sin cuentas y sin acceso a internet.
+</es-ES>
+<fr-FR>
+Première version publique ! Signez, modifiez et lisez des PDF entièrement hors ligne. Détection intelligente des signatures, tampons de date, ressaisie du texte (même sur les scans, via OCR), gestion et fusion des pages, protection par mot de passe AES-256. Gratuit pour toujours — sans pub, sans compte, sans accès internet.
+</fr-FR>
+<sv-SE>
+Första publika versionen! Signera, redigera och läs PDF:er helt offline. Smart signaturigenkänning, datumstämplar, skriv om text (även i skannade dokument, via OCR), hantera och slå ihop sidor, skydda PDF:er med AES-256-lösenord. Gratis för alltid — inga annonser, inga konton, ingen internetåtkomst.
+</sv-SE>
+<si-LK>
+පළමු මහජන නිකුතුව! PDF සම්පූර්ණයෙන්ම offline අත්සන් කරන්න, සංස්කරණය කරන්න, කියවන්න. ස්මාර්ට් අත්සන් හඳුනාගැනීම, දින මුද්‍රා, පෙළ නැවත ටයිප් කිරීම (OCR මගින් ස්කෑන් වලද), පිටු කළමනාකරණය සහ ඒකාබද්ධය, AES-256 මුරපද ආරක්ෂාව. සදහටම නොමිලේ — දැන්වීම් නැත, ගිණුම් නැත, අන්තර්ජාල ප්‍රවේශය නැත.
+</si-LK>
