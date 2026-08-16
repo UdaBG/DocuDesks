@@ -1,8 +1,10 @@
 # DocuDesk
 
-**Sign one, sign them all.** DocuDesk (formerly Signer) is an installable desktop app for bulk-signing PDF documents: load a stack of PDFs (for example the same form filled in by many people), place your signature once on the top document, and every document in the stack is signed in the same spot — or let **Smart detect** find the signature line in each document automatically.
+**📲 Live on Google Play:** [DocuDesk: PDF Sign & Edit](https://play.google.com/store/apps/details?id=com.docudesk.lite) · **🖥 Windows installers:** [latest release](https://github.com/UdaBG/DocuDesks/releases/latest)
 
-**Free and fully offline.** No ads, no in-app purchases, no accounts, no analytics — and nothing your documents contain ever leaves your device. See the [Privacy Policy](docs/PRIVACY.md). The road to a public Play Store release is tracked in the [Release Plan](docs/RELEASE_PLAN.md).
+**Read, sign and edit PDFs — completely offline.** DocuDesk puts three views on one canvas: a distraction-free **Read** mode, a **Sign** mode that bulk-signs a whole stack of documents (place your signature once — or let **Smart detect** find the signature line in each document, scans included, via bundled OCR) with date stamps alongside, and an **Edit** mode that retypes existing text, adds text/shapes/ink, and manages pages. Documents can be merged, and protected with AES-256 passwords — DocuDesk opens password-protected PDFs too.
+
+**Free and fully offline, forever.** No ads, no in-app purchases, no accounts, no analytics — the Android app doesn't even hold the INTERNET permission, so nothing your documents contain *can* leave your device. See the [Privacy Policy](docs/PRIVACY.md).
 
 ![stack](docs/screenshot-placeholder.png)
 

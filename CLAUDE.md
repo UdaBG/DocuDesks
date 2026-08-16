@@ -315,11 +315,17 @@ CLI runs from the repo root, so `src-tauri/.cargo/` is silently invisible;
 errors — hence 1003003. Verify any AAB before shipping:
 `llvm-readelf -l libsigner_lib.so` → every LOAD must say 0x4000.
 
-**Play production launch in progress**: production access GRANTED; user is
-rolling out `play-artifacts/DocuDesk-1.3.3-play.aab` (countries: all;
-release notes: `store-assets/release-notes-1.3.2.txt`, version-agnostic).
-First-release review takes ~1-7 days. When Google approves: flip v1.3.3 to
-stable/Latest on GitHub, prune older pre-releases, update README/links.
+**🚀 LIVE ON GOOGLE PLAY (2026-08-16)**:
+https://play.google.com/store/apps/details?id=com.docudesk.lite —
+production rollout at 100%, all countries. v1.3.3 is the stable "Latest"
+on GitHub; the 1.2.x–1.3.2 test pre-releases are pruned; README announces
+the launch. IARC rating live (Global Rating ID in store-assets/listing.md).
+
+**NEXT (post-launch)**: watch Play vitals (crash rate/ANR fill in ~48h) and
+the first reviews; keep the closed track as the beta channel (upload next
+AAB there → testers → "Promote to production"). Backlog: performance pass,
+in-app "Send feedback" mailto, desktop auto-update, ESLint + CI, finish
+EditStage decomposition. Play search indexing can lag a day or two.
 
 Backlog (post-launch 1.2.x/1.3): open user-password PDFs (qpdf `--password`),
 encrypt-on-save (qpdf `--encrypt`), performance pass (need tester specifics),
