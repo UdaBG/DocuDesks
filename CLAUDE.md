@@ -280,11 +280,24 @@ ALL FIXED as **1.2.2** (versionCode 1002002):
    mode — it is advisory-only protection that our own unlock button strips,
    and the user agreed selling it would be dishonest.
 
-**NEXT**: build 1.3.0 artifacts (APK sideload / AAB upload → play-artifacts
-/ both installers), cut v1.3.0 GitHub pre-release, user re-tests on device
-(esp. date stamp on touch + protect on Android SAF), uploads ONE verified
-AAB to the Play closed track, testers verify → promote to production, flip
-that release to stable/Latest. Pre-releases 1.2.0–1.2.2 can be pruned then.
+**1.3.0 SHIPPED**, then a same-day feedback round shipped as **1.3.1**
+(versionCode 1003001): 4) password-protected PDFs OPEN in-app (locked docs
+= status error + `locked`, prompt in any view, retry = re-select; NO
+edit-only-password mode — advisory-only, our own unlock strips it);
+5) Protect lock button on every doc card (skipped checkbox multi-select —
+fights the stack model); 6) Help window: "How to use" guide tab is the
+DEFAULT (7 iconed sections ×6 locales, 263 keys), licenses behind tab 2;
+7) `.sig-box img` is display:block — an INLINE img rides the text baseline
+and overflowed boxes shorter than the ~19px line-height (thin date strips);
+8) retype textarea focuses with preventScroll. The reported "preview shifts
+a few px while retyping" did NOT reproduce (scroll/zoom provably stable
+through box-open + keyboard); likely the live textarea approximating PDF
+metrics — awaiting a screen recording if it persists.
+
+**NEXT**: user device-tests v1.3.1 (date stamp on touch, protect via SAF,
+guide, protected-PDF open), uploads ONE verified AAB to the Play closed
+track, testers verify → promote to production, flip that release to
+stable/Latest. Prune the 1.2.x–1.3.0 pre-releases then.
 
 Backlog (post-launch 1.2.x/1.3): open user-password PDFs (qpdf `--password`),
 encrypt-on-save (qpdf `--encrypt`), performance pass (need tester specifics),
