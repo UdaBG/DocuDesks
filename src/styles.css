@@ -226,7 +226,10 @@ select,
   grid-template-columns: minmax(0, 1fr); /* single column that never exceeds the viewport */
   height: 100vh;
 }
-/* read view has no action bar — don't reserve its row */
+/* read view has no action bar — don't reserve its row. ⚠ Desktop only by
+   intent: this selector out-specifies the mobile .app override, so the phone
+   media query re-declares its auto rows for read view — a fixed 54px top row
+   CLIPPED the view toggle whenever a longer locale wrapped it (Sinhala). */
 .app[data-view='read'] {
   grid-template-rows: 54px 1fr;
 }
@@ -534,6 +537,8 @@ select,
   color: var(--red);
 }
 
+/* always visible — touch screens have no hover to reveal them with, and
+   even on desktop hidden controls were getting missed (tester feedback) */
 .doc-remove {
   flex: none;
   display: grid;
@@ -543,10 +548,6 @@ select,
   margin-right: 4px;
   border-radius: 6px;
   color: var(--ink-500);
-  opacity: 0;
-}
-.doc-item:hover .doc-remove {
-  opacity: 1;
 }
 .doc-remove:hover {
   background: rgba(187, 58, 48, 0.13);
@@ -2284,6 +2285,11 @@ input[type='range'] {
     overflow-x: hidden;
   }
   .app {
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
+  }
+  /* the top row must stay auto in EVERY view: the desktop read-view rule
+     (fixed 54px) wins on specificity and would clip a wrapped view toggle */
+  .app[data-view='read'] {
     grid-template-rows: auto minmax(0, 1fr) auto auto;
   }
 

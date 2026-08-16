@@ -105,6 +105,44 @@ try {
   if (backResult !== 'handled') fail(`back should handle the drawer, got ${backResult}`)
   if (afterBack.open) fail('back button did not close the drawer')
 
+  // ---- 3b. doc-card duplicate/remove buttons are always visible ------------
+  await evaluate(`(document.querySelectorAll('.mobile-tab')[0].click(), true)`)
+  await sleep(300)
+  const docBtns = await evaluate(`(() => {
+    const dup = document.querySelector('.doc-dup')
+    const rem = document.querySelectorAll('.doc-remove:not(.doc-dup)')[0]
+    const vis = (el) => !!el && getComputedStyle(el).opacity === '1' && el.getBoundingClientRect().width > 5
+    return { dup: vis(dup), remove: vis(rem) }
+  })()`)
+  console.log('doc-card buttons visible (no hover):', JSON.stringify(docBtns))
+  if (!docBtns.dup || !docBtns.remove) fail('doc duplicate/remove buttons must be always visible')
+
+  // ---- 3c. a wrapped view toggle must never be clipped (read view) ----------
+  // 320dp wraps even English; the old fixed 54px top row cut the second row off
+  await send('Emulation.setDeviceMetricsOverride', { width: 320, height: 915, deviceScaleFactor: 2, mobile: true })
+  await evaluate(`(${S}.setView('read'), true)`)
+  await sleep(800)
+  const wrap = await evaluate(`(() => {
+    const bar = document.querySelector('.topbar').getBoundingClientRect()
+    const tog = document.querySelector('.view-toggle').getBoundingClientRect()
+    const mid = document.elementFromPoint(tog.left + 10, tog.top + tog.height / 2)
+    // the app grid's top row must track the bar's real height (auto) — a
+    // fixed 54px row clipped the toggle whenever a longer locale wrapped it
+    const row1 = parseFloat(getComputedStyle(document.querySelector('.app')).gridTemplateRows)
+    return {
+      togBottom: Math.round(tog.bottom), barBottom: Math.round(bar.bottom),
+      barH: Math.round(bar.height), row1: Math.round(row1),
+      visible: !!mid && !!mid.closest('.view-toggle'),
+    }
+  })()`)
+  console.log('320dp read-view toggle:', JSON.stringify(wrap))
+  if (wrap.togBottom > wrap.barBottom + 1) fail(`view toggle clipped: toggle bottom ${wrap.togBottom} > bar ${wrap.barBottom}`)
+  if (!wrap.visible) fail('view toggle is covered by another element')
+  if (Math.abs(wrap.row1 - wrap.barH) > 2) fail(`read-view top grid row is fixed (${wrap.row1}px) instead of tracking the bar (${wrap.barH}px)`)
+  await evaluate(`(${S}.setView('edit'), true)`)
+  await send('Emulation.setDeviceMetricsOverride', { width: 412, height: 915, deviceScaleFactor: 2, mobile: true })
+  await sleep(600)
+
   // ---- 4. desktop: plain grid column, no drawer chrome ----------------------
   await send('Emulation.clearDeviceMetricsOverride')
   await sleep(700)
