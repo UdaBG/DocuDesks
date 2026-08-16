@@ -244,5 +244,22 @@
   "locked.wrong": "Contraseña incorrecta; inténtalo de nuevo",
   "locked.action": "Abrir",
   "locked.badge": "Requiere contraseña",
-  "locked.errorText": "Este PDF necesita una contraseña para abrirse. Selecciónalo para escribirla."
+  "locked.errorText": "Este PDF necesita una contraseña para abrirse. Selecciónalo para escribirla.",
+  "guide.title": "Ayuda",
+  "guide.tabGuide": "Cómo se usa",
+  "guide.tabLicenses": "Licencias",
+  "guide.docs.title": "Añadir documentos",
+  "guide.docs.body": "Toca \"Añadir PDFs\", comparte un archivo con DocuDesk o usa \"Abrir con\". Los documentos forman una pila: una sola configuración de firma se aplica a todos, así que la pila entera se firma de una vez. Cada tarjeta tiene botones para duplicar, proteger o quitar ese documento, y el panel Documentos puede unir varios en uno. Todo permanece en este dispositivo.",
+  "guide.views.title": "Leer, Firmar, Editar",
+  "guide.views.body": "Cambia de vista con el selector superior. Leer muestra el papel terminado sin estorbos. Firmar coloca firmas y fechas. Editar cambia el contenido en sí. Haz zoom en cualquier parte con dos dedos o Ctrl+rueda: tu página, zoom y posición te siguen entre vistas.",
+  "guide.sign.title": "Firmar",
+  "guide.sign.body": "Crea una firma dibujándola, escribiéndola o con una foto. La detección inteligente encuentra sola el lugar de la firma; en modo manual, toca el papel para colocar un sello. Arrastra para mover, usa el tirador de la esquina para cambiar el tamaño y el superior para rotar. La × quita un sello.",
+  "guide.date.title": "Sello de fecha",
+  "guide.date.body": "Toca \"Fecha\" en el lienzo de firma para añadir la fecha de hoy. Selecciónala para elegir formato, color y estilo. Se mueve y rota como una firma y se incluye en cada copia guardada.",
+  "guide.edit.title": "Editar",
+  "guide.edit.body": "Elige una herramienta de la barra. Reescribir sustituye texto existente: toca cualquier línea; los documentos escaneados se leen automáticamente. T añade texto nuevo; los lápices y las formas dibujan; el corrector cubre partes de la página; el borrador quita tus propios añadidos. Cada herramienta explica lo que hace al seleccionarla.",
+  "guide.pages.title": "Páginas y unir",
+  "guide.pages.body": "La tira inferior de la vista Editar gestiona las páginas: toca para saltar, arrastra una miniatura para reordenar, + inserta una página en blanco, el botón de copia duplica la página actual y la papelera la elimina. Une varios PDFs en uno desde el panel Documentos.",
+  "guide.save.title": "Guardar y proteger",
+  "guide.save.body": "\"Firmar\" guarda copias firmadas de toda la pila; \"Guardar PDF editado\" guarda el documento actual; se puede imprimir desde ambos. \"Proteger PDF\" guarda una copia que pide contraseña para abrirse, cifrada con AES por completo en este dispositivo. DocuDesk también abre PDFs protegidos: simplemente pide su contraseña."
 }

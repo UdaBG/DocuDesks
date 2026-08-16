@@ -58,6 +58,19 @@ try {
   await waitFor(`!!document.querySelector('.topbar-info')`, 'info button')
   await evaluate(`(document.querySelector('.topbar-info').click(), true)`)
   await waitFor(`!!document.querySelector('.modal.licenses')`, 'licenses modal open')
+
+  // the guide is the DEFAULT tab: usage sections, no license list yet
+  const guide = await evaluate(`(() => ({
+    sections: document.querySelectorAll('.guide-sec').length,
+    licListHidden: !document.querySelector('.lic-list'),
+  }))()`)
+  console.log('guide tab (default):', JSON.stringify(guide))
+  if (guide.sections < 6) fail(`expected the usage guide sections, got ${guide.sections}`)
+  if (!guide.licListHidden) fail('licenses should live behind their own tab')
+
+  // switch to the licenses tab for the attribution checks
+  await evaluate(`(document.querySelectorAll('.guide-tabs .seg')[1].click(), true)`)
+  await waitFor(`!!document.querySelector('.lic-list')`, 'licenses tab')
   const info = await evaluate(`(() => {
     const items = document.querySelectorAll('.lic-list li').length
     const texts = document.querySelectorAll('.lic-text summary').length

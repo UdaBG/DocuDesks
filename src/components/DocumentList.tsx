@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useApp } from '../store'
 import type { SigDoc } from '../types'
-import { CheckIcon, CloseIcon, CopyIcon, DocIcon, InfoIcon, MergeIcon, PlusIcon, WarnIcon } from './icons'
+import { CheckIcon, CloseIcon, CopyIcon, DocIcon, InfoIcon, LockIcon, MergeIcon, PlusIcon, WarnIcon } from './icons'
 import MergeDialog from './edit/MergeDialog'
+import ProtectDialog from './ProtectDialog'
 import Attributions from './Attributions'
 import { useMediaQuery } from '../lib/useMediaQuery'
 
@@ -25,6 +26,7 @@ export default function DocumentList() {
   const duplicateDoc = useApp((s) => s.duplicateDoc)
   const [mergeOpen, setMergeOpen] = useState(false)
   const [showLicenses, setShowLicenses] = useState(false)
+  const [protectId, setProtectId] = useState<string | null>(null)
   const mergeable = docs.filter((d) => d.status !== 'error').length
   // phones hide the top bar's licenses button (no room at 360dp) — it lives
   // here in the Documents panel head instead
@@ -96,6 +98,16 @@ export default function DocumentList() {
             >
               <CopyIcon size={12} />
             </button>
+            {d.status !== 'error' && (
+              <button
+                className="doc-remove doc-dup"
+                aria-label={t('protect.button')}
+                title={t('protect.button')}
+                onClick={() => setProtectId(d.id)}
+              >
+                <LockIcon size={12} />
+              </button>
+            )}
             <button
               className="doc-remove"
               aria-label={t('docs.remove')}
@@ -107,6 +119,7 @@ export default function DocumentList() {
         ))}
       </ul>
       {mergeOpen && <MergeDialog onClose={() => setMergeOpen(false)} />}
+      {protectId && <ProtectDialog docId={protectId} onClose={() => setProtectId(null)} />}
     </aside>
   )
 }

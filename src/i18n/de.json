@@ -244,5 +244,22 @@
   "locked.wrong": "Falsches Passwort — bitte erneut versuchen",
   "locked.action": "Öffnen",
   "locked.badge": "Passwort erforderlich",
-  "locked.errorText": "Dieses PDF verlangt zum Öffnen ein Passwort. Auswählen, um es einzugeben."
+  "locked.errorText": "Dieses PDF verlangt zum Öffnen ein Passwort. Auswählen, um es einzugeben.",
+  "guide.title": "Hilfe",
+  "guide.tabGuide": "Anleitung",
+  "guide.tabLicenses": "Lizenzen",
+  "guide.docs.title": "Dokumente hinzufügen",
+  "guide.docs.body": "Tippe auf \"PDFs hinzufügen\", teile eine Datei mit DocuDesk oder nutze \"Öffnen mit\". Dokumente bilden einen Stapel: eine Signatur-Einstellung gilt für alle, sodass der ganze Stapel auf einmal signiert wird. Jede Karte hat Knöpfe zum Duplizieren, Schützen und Entfernen; im Dokumente-Bereich lassen sich mehrere zu einem zusammenführen. Alles bleibt auf diesem Gerät.",
+  "guide.views.title": "Lesen, Signieren, Bearbeiten",
+  "guide.views.body": "Wechsle die Ansicht mit dem Umschalter oben. Lesen zeigt das fertige Blatt ohne Ablenkung. Signieren platziert Unterschriften und Datumsstempel. Bearbeiten ändert den Inhalt selbst. Zoome überall mit zwei Fingern oder Strg+Scrollen — Seite, Zoom und Position wandern zwischen den Ansichten mit.",
+  "guide.sign.title": "Signieren",
+  "guide.sign.body": "Erstelle eine Unterschrift durch Zeichnen, Tippen oder ein Foto. Die automatische Erkennung findet die Signaturstelle von selbst — im manuellen Modus tippst du aufs Blatt, um einen Stempel zu setzen. Ziehen verschiebt, der Eckgriff skaliert, der obere Griff dreht. Das × entfernt einen Stempel.",
+  "guide.date.title": "Datumsstempel",
+  "guide.date.body": "Tippe auf \"Datum\" auf der Signierfläche, um das heutige Datum einzufügen. Wähle es aus, um Format, Farbe und Stil festzulegen. Es lässt sich wie eine Unterschrift verschieben und drehen und ist in jeder gespeicherten Kopie enthalten.",
+  "guide.edit.title": "Bearbeiten",
+  "guide.edit.body": "Wähle ein Werkzeug in der Leiste. \"Neu tippen\" ersetzt vorhandenen Text — tippe auf eine Zeile; gescannte Dokumente werden automatisch gelesen. T fügt neuen Text hinzu; Stifte und Formen zeichnen; die Abdeckung verdeckt Teile der Seite; der Radierer entfernt deine eigenen Ergänzungen. Jedes Werkzeug erklärt sich beim Auswählen.",
+  "guide.pages.title": "Seiten & Zusammenführen",
+  "guide.pages.body": "Die Leiste unten in der Bearbeiten-Ansicht verwaltet Seiten: Tippen springt, Ziehen ordnet neu, + fügt eine leere Seite ein, der Kopier-Knopf dupliziert die aktuelle Seite, der Papierkorb entfernt sie. Mehrere PDFs führst du im Dokumente-Bereich zu einem zusammen.",
+  "guide.save.title": "Speichern & Schützen",
+  "guide.save.body": "\"Signieren\" speichert signierte Kopien des ganzen Stapels; \"Bearbeitetes PDF speichern\" sichert das aktuelle Dokument; Drucken geht aus beiden. \"PDF schützen\" speichert eine Kopie, die zum Öffnen ein Passwort verlangt — AES-verschlüsselt, vollständig auf diesem Gerät. DocuDesk öffnet geschützte PDFs auch: es fragt einfach nach dem Passwort."
 }

@@ -244,5 +244,22 @@
   "locked.wrong": "Mot de passe incorrect — réessayez",
   "locked.action": "Ouvrir",
   "locked.badge": "Mot de passe requis",
-  "locked.errorText": "Ce PDF demande un mot de passe pour s'ouvrir. Sélectionnez-le pour le saisir."
+  "locked.errorText": "Ce PDF demande un mot de passe pour s'ouvrir. Sélectionnez-le pour le saisir.",
+  "guide.title": "Aide",
+  "guide.tabGuide": "Mode d'emploi",
+  "guide.tabLicenses": "Licences",
+  "guide.docs.title": "Ajouter des documents",
+  "guide.docs.body": "Touchez « Ajouter des PDF », partagez un fichier vers DocuDesk ou utilisez « Ouvrir avec ». Les documents forment une pile : un seul réglage de signature s'applique à tous, la pile entière se signe donc d'un coup. Chaque carte a des boutons pour dupliquer, protéger ou retirer ce document, et le panneau Documents peut en fusionner plusieurs. Tout reste sur cet appareil.",
+  "guide.views.title": "Lecture, Signer, Modifier",
+  "guide.views.body": "Changez de vue avec le sélecteur en haut. Lecture montre le papier fini, sans rien devant. Signer place signatures et dates. Modifier change le contenu lui-même. Zoomez partout en pinçant ou avec Ctrl+molette — votre page, le zoom et la position vous suivent d'une vue à l'autre.",
+  "guide.sign.title": "Signer",
+  "guide.sign.body": "Créez une signature en la dessinant, en la tapant ou en la photographiant. La détection intelligente trouve l'emplacement toute seule — en mode manuel, touchez le papier pour poser un tampon. Glissez pour déplacer, la poignée d'angle redimensionne, celle du haut fait pivoter. La × retire un tampon.",
+  "guide.date.title": "Tampon de date",
+  "guide.date.body": "Touchez « Date » sur le canevas de signature pour ajouter la date du jour. Sélectionnez-la pour choisir le format, la couleur et le style. Elle se déplace et pivote comme une signature et figure dans chaque copie enregistrée.",
+  "guide.edit.title": "Modifier",
+  "guide.edit.body": "Choisissez un outil dans la barre. Ressaisir remplace le texte existant — touchez une ligne ; les documents numérisés sont lus automatiquement. T ajoute du texte ; stylos et formes dessinent ; le blanc couvre une partie de la page ; la gomme retire vos propres ajouts. Chaque outil annonce sa fonction quand on le sélectionne.",
+  "guide.pages.title": "Pages et fusion",
+  "guide.pages.body": "La bande en bas de la vue Modifier gère les pages : touchez pour aller à une page, glissez une vignette pour réordonner, + insère une page vierge, le bouton copie duplique la page courante et la corbeille la supprime. Fusionnez plusieurs PDF en un depuis le panneau Documents.",
+  "guide.save.title": "Enregistrer et protéger",
+  "guide.save.body": "« Signer » enregistre des copies signées de toute la pile ; « Enregistrer le PDF modifié » sauvegarde le document courant ; l'impression marche depuis les deux. « Protéger le PDF » enregistre une copie qui demande un mot de passe à l'ouverture — chiffrée AES, entièrement sur cet appareil. DocuDesk ouvre aussi les PDF protégés : il demande simplement leur mot de passe."
 }
