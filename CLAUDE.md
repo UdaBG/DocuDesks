@@ -140,6 +140,8 @@ node scripts/view-continuity.mjs    # page+zoom+center survive Read->Sign->Edit;
 node scripts/smart-scan-budget.mjs  # OCR budget on multi-page scans; manual->smart retries
 node scripts/tools-drawer.mjs       # phone edit tools drawer (veil + back button close)
 node scripts/fonts-embed.mjs        # every bundled TTF embeds via pdf-lib (plain Node)
+node scripts/date-stamp.mjs         # sign-view date stamp: drawer, restyle, drag, composite
+node scripts/protect-pdf.mjs        # Protect PDF: encrypt, reject w/o password, decrypt with
 node scripts/smart-letters.mjs, smart-contract.mjs             # detection
 node scripts/edit-sign-merge.mjs, edit-save-signature.mjs      # sign+edit merge
 node scripts/multi-stamps.mjs, annot-cover.mjs, cover-color.mjs
@@ -256,10 +258,26 @@ ALL FIXED as **1.2.2** (versionCode 1002002):
 3. Doc-card duplicate/remove buttons were hover-revealed (opacity 0) —
    invisible on touch; now always visible (tools-drawer.mjs asserts).
 
-**NEXT**: build 1.2.2 artifacts (APK sideload key / AAB upload key →
-play-artifacts / both installers), cut v1.2.2 GitHub pre-release, user
-re-tests on device, uploads AAB to the Play closed track (testers verify →
-promote to production), then flip the release to stable/Latest.
+**1.2.2 SHIPPED** (pre-release v1.2.2, AAB in play-artifacts history).
+
+**1.3.0 — sign-mode power tools** (user request, one commit `64ae12e`):
+1. **Date stamps**: Date pill on the sign canvas → today's date as a
+   stack-wide stamp. KEY DESIGN: the date renders to a trimmed PNG (like
+   typed signatures) so the ENTIRE stamp pipeline (drag/rotate/exclude/
+   applyStamps/read-composite) works untouched; any canvas font works
+   (incl. Caveat). Style drawer on selection: 7 formats (Intl month names,
+   en-only ordinals), colors, 4 faces; last style persists in settings
+   (`dateStyle`). Edit view shows ALL sign-side stamps as 45%-opacity
+   ghosts (.stamp-ghosts) — three views, one paper, finally symmetric.
+2. **Protect PDF**: sign-panel button → password dialog → finalizedBytesFor
+   → qpdf `--encrypt` (same wasm as unlock; AES-256 default, AES-128
+   optional) → `<stem>_protected.pdf`. `__unlockProbe(path, pw)` test hook.
+
+**NEXT**: build 1.3.0 artifacts (APK sideload / AAB upload → play-artifacts
+/ both installers), cut v1.3.0 GitHub pre-release, user re-tests on device
+(esp. date stamp on touch + protect on Android SAF), uploads ONE verified
+AAB to the Play closed track, testers verify → promote to production, flip
+that release to stable/Latest. Pre-releases 1.2.0–1.2.2 can be pruned then.
 
 Backlog (post-launch 1.2.x/1.3): open user-password PDFs (qpdf `--password`),
 encrypt-on-save (qpdf `--encrypt`), performance pass (need tester specifics),
