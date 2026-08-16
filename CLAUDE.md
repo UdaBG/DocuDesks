@@ -304,10 +304,22 @@ metrics — awaiting a screen recording if it persists.
    the stack IS bulk sign. Regressions: multi-select.mjs + protect-pdf.mjs
    §7/8.
 
-**NEXT**: user device-tests v1.3.2 (protected-PDF prompt flow, hold-to-
-select + bulk protect, date stamp, guide), uploads ONE verified AAB to the
-Play closed track, testers verify → promote to production, flip that
-release to stable/Latest. Prune the older pre-releases then.
+**1.3.3** (versionCode 1003003): Play REJECTED 1.3.2's production release —
+"app does not support 16 KB memory page sizes" (mandatory, Android 15+).
+Root cause: NDK r27 links Rust .so with 4 KB LOAD segments (p_align
+0x1000). Fix: `.cargo/config.toml` AT THE REPO ROOT passing
+`-Wl,-z,max-page-size=16384` per Android target. ⚠ Two traps: (1) cargo
+discovers config from the WORKING DIRECTORY, not the manifest — the tauri
+CLI runs from the repo root, so `src-tauri/.cargo/` is silently invisible;
+(2) Play burns a versionCode the moment an AAB uploads, even if the release
+errors — hence 1003003. Verify any AAB before shipping:
+`llvm-readelf -l libsigner_lib.so` → every LOAD must say 0x4000.
+
+**Play production launch in progress**: production access GRANTED; user is
+rolling out `play-artifacts/DocuDesk-1.3.3-play.aab` (countries: all;
+release notes: `store-assets/release-notes-1.3.2.txt`, version-agnostic).
+First-release review takes ~1-7 days. When Google approves: flip v1.3.3 to
+stable/Latest on GitHub, prune older pre-releases, update README/links.
 
 Backlog (post-launch 1.2.x/1.3): open user-password PDFs (qpdf `--password`),
 encrypt-on-save (qpdf `--encrypt`), performance pass (need tester specifics),
