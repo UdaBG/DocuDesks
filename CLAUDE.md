@@ -294,10 +294,20 @@ a few px while retyping" did NOT reproduce (scroll/zoom provably stable
 through box-open + keyboard); likely the live textarea approximating PDF
 metrics — awaiting a screen recording if it persists.
 
-**NEXT**: user device-tests v1.3.1 (date stamp on touch, protect via SAF,
-guide, protected-PDF open), uploads ONE verified AAB to the Play closed
-track, testers verify → promote to production, flip that release to
-stable/Latest. Prune the 1.2.x–1.3.0 pre-releases then.
+**1.3.2** (versionCode 1003002) — two more tester asks, shipped:
+9) protected files auto-select on add (locked docs were skipped by
+   auto-selection → BLANK stage, no prompt) and the prompt re-arms on
+   re-select or view switch (pwDeclined lives in the store);
+10) document **multi-select**: hold a card (or right-click) → checkboxes,
+   Select all, bulk Protect (one password via protectDocs) / Duplicate /
+   Remove (removeDocs = ONE undo restores all). No bulk Sign on purpose —
+   the stack IS bulk sign. Regressions: multi-select.mjs + protect-pdf.mjs
+   §7/8.
+
+**NEXT**: user device-tests v1.3.2 (protected-PDF prompt flow, hold-to-
+select + bulk protect, date stamp, guide), uploads ONE verified AAB to the
+Play closed track, testers verify → promote to production, flip that
+release to stable/Latest. Prune the older pre-releases then.
 
 Backlog (post-launch 1.2.x/1.3): open user-password PDFs (qpdf `--password`),
 encrypt-on-save (qpdf `--encrypt`), performance pass (need tester specifics),
