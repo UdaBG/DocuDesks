@@ -192,3 +192,8 @@ DocuDesk ඔබගේ උපාංගය තුළම PDF ලේඛන අත්
 • 100% නොබැඳි — කිසිවක් උඩුගත නොවේ
 • ගිණුම් නැත, දැන්වීම් නැත, ලුහුබැඳීම් නැත
 • සදහටම නොමිලේ — යෙදුම් තුළ මිලදී ගැනීම් නැත
+
+## IARC content rating
+
+Global Rating ID: `dd83f74c-e7e3-8afa-8090-3f7b8bc47885` (issued 2026-08-16, storefront: Google Play).
+Reusable on any other IARC-licensed storefront (e.g. Microsoft Store) during onboarding instead of redoing the questionnaire. If a future update would change the questionnaire answers (ads, chat, UGC sharing - none planned by design), the questionnaire must be redone.
