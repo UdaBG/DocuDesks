@@ -80,16 +80,20 @@ try {
   await waitFor(`!!document.querySelector('.sig-box.date-stamp img')`, 'date stamp on the paper')
 
   // ---- 2. restyle: format + color re-render the image ----------------------
-  await evaluate(`(document.querySelectorAll('.date-format')[4].click(), true)`) // long format
-  await waitFor(`${S}.dateStamps[0].format === 'long'`, 'format applied')
+  // the persisted dateStyle seeds the fresh stamp (this very machine may
+  // carry one from earlier runs) — pick a format that DIFFERS from it
+  const targetIdx = first.format === 'long' ? 3 : 4 // iso vs long
+  const targetFmt = first.format === 'long' ? 'iso' : 'long'
+  await evaluate(`(document.querySelectorAll('.date-format')[${targetIdx}].click(), true)`)
+  await waitFor(`${S}.dateStamps[0].format === '${targetFmt}'`, 'format applied')
   const afterFormat = await evaluate(`(() => { const d = ${S}.dateStamps[0]; return { w: d.width, dataLen: d.dataUrl.length } })()`)
-  console.log('after long format:', JSON.stringify(afterFormat))
+  console.log(`after ${targetFmt} format:`, JSON.stringify(afterFormat))
   if (afterFormat.dataLen === first.dataLen) fail('format change did not re-render the image')
   await evaluate(`(document.querySelectorAll('.date-colors .color-chip')[2].click(), true)`)
   await waitFor(`${S}.dateStamps[0].color === '#2f45c4'`, 'color applied')
   const savedStyle = await evaluate(`window.signer.loadSettings().then((s) => s.dateStyle)`)
   console.log('persisted style:', JSON.stringify(savedStyle))
-  if (!savedStyle || savedStyle.format !== 'long') fail('date style not persisted to settings')
+  if (!savedStyle || savedStyle.format !== targetFmt) fail('date style not persisted to settings')
 
   // ---- 3. veil closes the drawer; drag moves the stamp ----------------------
   await evaluate(`(document.querySelector('.drawer-veil').click(), true)`)

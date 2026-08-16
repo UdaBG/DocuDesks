@@ -72,7 +72,9 @@ export default function DocumentList() {
                 <span className="doc-name">{d.name}</span>
                 <span className="doc-meta">
                   {d.status === 'error'
-                    ? t('docs.status.error')
+                    ? d.locked
+                      ? t('locked.badge')
+                      : t('docs.status.error')
                     : d.status === 'signed'
                       ? t('docs.status.signed')
                       : d.status === 'no-target'

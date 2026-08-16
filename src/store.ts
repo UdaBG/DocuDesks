@@ -7,7 +7,7 @@ import { displayNameFromPath } from './lib/fileName'
 import { detectSignatureSpot } from './lib/smartDetect'
 import { applyStamps, protectedName, signedName, type StampInput } from './lib/pdfSign'
 import { formatDate, renderDateImage, type DateFormatId } from './lib/dateStamp'
-import { encryptPdf } from './lib/unlockPdf'
+import { encryptPdf, unlockPdf } from './lib/unlockPdf'
 import { useEdit } from './editor/editStore'
 import { buildEditedPdf } from './editor/exportPdf'
 import { isMobileTauri } from './platform/tauriApi'
@@ -160,6 +160,9 @@ interface AppState {
   restyleDateStamp(stampId: string, patch: Partial<{ format: DateFormatId; color: string; fontId: string }>): Promise<void>
   /** save an encrypted copy of the FINALIZED document; returns the file name or null if dismissed */
   protectDoc(docId: string, password: string, bits: 128 | 256): Promise<string | null>
+  /** open a view-password-protected doc: decrypt with the given password.
+   *  false = wrong password (the doc stays locked) */
+  unlockWithPassword(docId: string, password: string): Promise<boolean>
   addSignature(sig: Omit<SavedSignature, 'id' | 'createdAt'>): void
   deleteSignature(id: string): void
   setActiveSignature(id: string): void
@@ -364,7 +367,9 @@ export const useApp = create<AppState>((set, get) => ({
           status: 'ready',
           ...(looksEncrypted(f.bytes) ? { encrypted: true } : {}),
         })
-      } catch {
+      } catch (e) {
+        // a view password isn't a broken file — it's a door we can knock on
+        const needsPassword = (e as { name?: string })?.name === 'PasswordException'
         added.push({
           id: uid(),
           name: f.name,
@@ -373,7 +378,9 @@ export const useApp = create<AppState>((set, get) => ({
           pageCount: 0,
           rev: 0,
           status: 'error',
-          error: i18next.t('error.invalidPdf', { name: f.name }),
+          ...(needsPassword
+            ? { locked: true, error: i18next.t('locked.errorText') }
+            : { error: i18next.t('error.invalidPdf', { name: f.name }) }),
         })
       }
     }
@@ -700,6 +707,24 @@ export const useApp = create<AppState>((set, get) => ({
     const name = protectedName(doc.name)
     const written = await window.signer.writeSigned(dir, name, out)
     return written ? name : null
+  },
+
+  async unlockWithPassword(docId, password) {
+    const doc = get().docs.find((d) => d.id === docId)
+    if (!doc || !password) return false
+    let clear: Uint8Array
+    let pages: number
+    try {
+      // wrong password -> qpdf refuses to open the file and this throws
+      clear = await unlockPdf(doc.bytes, password)
+      pages = await getPageCount(clear)
+    } catch {
+      return false
+    }
+    patchDoc(set, docId, { locked: undefined, error: undefined })
+    // replaceDocBytes bumps rev, resets status, and re-runs smart detection
+    get().replaceDocBytes(docId, clear, pages)
+    return true
   },
 
   excludeStampForDoc(docId, stampId) {

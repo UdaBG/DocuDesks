@@ -238,5 +238,11 @@
   "protect.working": "Protection…",
   "protect.saved": "Enregistré : {{name}}",
   "protect.done": "Terminé",
-  "protect.failed": "Impossible de protéger ce PDF"
+  "protect.failed": "Impossible de protéger ce PDF",
+  "locked.title": "Mot de passe requis",
+  "locked.body": "« {{name}} » est protégé. Saisissez son mot de passe pour l'ouvrir — tout reste sur cet appareil.",
+  "locked.wrong": "Mot de passe incorrect — réessayez",
+  "locked.action": "Ouvrir",
+  "locked.badge": "Mot de passe requis",
+  "locked.errorText": "Ce PDF demande un mot de passe pour s'ouvrir. Sélectionnez-le pour le saisir."
 }

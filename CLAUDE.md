@@ -141,7 +141,7 @@ node scripts/smart-scan-budget.mjs  # OCR budget on multi-page scans; manual->sm
 node scripts/tools-drawer.mjs       # phone edit tools drawer (veil + back button close)
 node scripts/fonts-embed.mjs        # every bundled TTF embeds via pdf-lib (plain Node)
 node scripts/date-stamp.mjs         # sign-view date stamp: drawer, restyle, drag, composite
-node scripts/protect-pdf.mjs        # Protect PDF: encrypt, reject w/o password, decrypt with
+node scripts/protect-pdf.mjs        # Protect PDF: encrypt, reject w/o pw, in-app open round-trip
 node scripts/smart-letters.mjs, smart-contract.mjs             # detection
 node scripts/edit-sign-merge.mjs, edit-save-signature.mjs      # sign+edit merge
 node scripts/multi-stamps.mjs, annot-cover.mjs, cover-color.mjs
@@ -272,6 +272,13 @@ ALL FIXED as **1.2.2** (versionCode 1002002):
 2. **Protect PDF**: sign-panel button → password dialog → finalizedBytesFor
    → qpdf `--encrypt` (same wasm as unlock; AES-256 default, AES-128
    optional) → `<stem>_protected.pdf`. `__unlockProbe(path, pw)` test hook.
+3. **Open password-protected PDFs**: a PasswordException on add lands the
+   doc as status 'error' + `locked: true` (every pipeline already skips
+   errors); selecting it prompts for the password (any view), qpdf
+   `--password` decrypts → replaceDocBytes. Re-selecting the doc is the
+   retry gesture after a dismissal. NOT offered: an "edit-only password"
+   mode — it is advisory-only protection that our own unlock button strips,
+   and the user agreed selling it would be dishonest.
 
 **NEXT**: build 1.3.0 artifacts (APK sideload / AAB upload → play-artifacts
 / both installers), cut v1.3.0 GitHub pre-release, user re-tests on device

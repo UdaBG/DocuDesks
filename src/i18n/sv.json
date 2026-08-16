@@ -238,5 +238,11 @@
   "protect.working": "Skyddar…",
   "protect.saved": "Sparad: {{name}}",
   "protect.done": "Klart",
-  "protect.failed": "Kunde inte skydda denna PDF"
+  "protect.failed": "Kunde inte skydda denna PDF",
+  "locked.title": "Lösenord krävs",
+  "locked.body": "\"{{name}}\" är skyddad. Ange lösenordet för att öppna den — allt stannar på den här enheten.",
+  "locked.wrong": "Fel lösenord — försök igen",
+  "locked.action": "Öppna",
+  "locked.badge": "Lösenord krävs",
+  "locked.errorText": "Denna PDF kräver ett lösenord för att öppnas. Välj den för att ange det."
 }

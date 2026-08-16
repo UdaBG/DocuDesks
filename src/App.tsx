@@ -39,6 +39,12 @@ export default function App() {
   const [unlockBusy, setUnlockBusy] = useState(false)
   // protected docs the user chose to edit without unlocking — don't re-nag
   const [unlockDeclined, setUnlockDeclined] = useState<string[]>([])
+  // view-password prompt (files that cannot even open without a password)
+  const unlockWithPassword = useApp((s) => s.unlockWithPassword)
+  const [pwInput, setPwInput] = useState('')
+  const [pwWrong, setPwWrong] = useState(false)
+  const [pwBusy, setPwBusy] = useState(false)
+  const [pwDeclined, setPwDeclined] = useState<string[]>([])
 
   // Offer to unlock a protected document as soon as it's the active doc in
   // Edit *or* Sign — a protected file cannot be rebuilt, so both signing and
@@ -48,6 +54,15 @@ export default function App() {
     (view === 'edit' || view === 'sign') &&
     !!selectedDoc?.encrypted &&
     !unlockDeclined.includes(selectedDoc.id)
+
+  // a view-password file can't even render — ask in every view. Re-selecting
+  // the document is the retry gesture after a dismissal.
+  const promptPassword = !!selectedDoc?.locked && !pwDeclined.includes(selectedDoc.id)
+  useEffect(() => {
+    setPwDeclined((d) => d.filter((id) => id !== selectedDocId))
+    setPwInput('')
+    setPwWrong(false)
+  }, [selectedDocId])
 
   // Production resilience: surface unexpected failures instead of dying
   // silently. Routine render cancellations and observer churn are ignored.
@@ -212,6 +227,60 @@ export default function App() {
                 }}
               >
                 {unlockBusy ? t('unlock.working') : t('unlock.action')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {promptPassword && selectedDoc && (
+        <div className="modal-veil">
+          <div className="modal dialog confirm-dialog" role="dialog" aria-modal="true">
+            <h2>{t('locked.title')}</h2>
+            <p className="muted">{t('locked.body', { name: selectedDoc.name })}</p>
+            <label className="protect-field">
+              <span>{t('protect.password')}</span>
+              <input
+                type="password"
+                autoFocus
+                value={pwInput}
+                disabled={pwBusy}
+                onChange={(e) => {
+                  setPwInput(e.target.value)
+                  setPwWrong(false)
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && pwInput && !pwBusy) {
+                    void (async () => {
+                      setPwBusy(true)
+                      const ok = await unlockWithPassword(selectedDoc.id, pwInput)
+                      setPwBusy(false)
+                      if (!ok) setPwWrong(true)
+                    })()
+                  }
+                }}
+              />
+            </label>
+            {pwWrong && <p className="protect-error">{t('locked.wrong')}</p>}
+            <div className="dialog-actions">
+              <button
+                className="ghost-btn"
+                disabled={pwBusy}
+                onClick={() => setPwDeclined((d) => [...d, selectedDoc.id])}
+              >
+                {t('unlock.cancel')}
+              </button>
+              <div className="spacer" />
+              <button
+                className="btn-primary"
+                disabled={!pwInput || pwBusy}
+                onClick={async () => {
+                  setPwBusy(true)
+                  const ok = await unlockWithPassword(selectedDoc.id, pwInput)
+                  setPwBusy(false)
+                  if (!ok) setPwWrong(true)
+                }}
+              >
+                {pwBusy ? t('unlock.working') : t('locked.action')}
               </button>
             </div>
           </div>

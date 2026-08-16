@@ -100,6 +100,9 @@ export interface SigDoc {
   primaryDisabled?: boolean
   /** the file carries password/permission protection — output copies won't */
   encrypted?: boolean
+  /** needs its VIEW password before it can even be opened (status 'error'
+   *  until unlockWithPassword succeeds, so every pipeline skips it) */
+  locked?: boolean
   signedPath?: string
   error?: string
 }

@@ -238,5 +238,11 @@
   "protect.working": "Wird geschützt…",
   "protect.saved": "Gespeichert: {{name}}",
   "protect.done": "Fertig",
-  "protect.failed": "PDF konnte nicht geschützt werden"
+  "protect.failed": "PDF konnte nicht geschützt werden",
+  "locked.title": "Passwort erforderlich",
+  "locked.body": "\"{{name}}\" ist geschützt. Passwort eingeben, um die Datei zu öffnen — alles bleibt auf diesem Gerät.",
+  "locked.wrong": "Falsches Passwort — bitte erneut versuchen",
+  "locked.action": "Öffnen",
+  "locked.badge": "Passwort erforderlich",
+  "locked.errorText": "Dieses PDF verlangt zum Öffnen ein Passwort. Auswählen, um es einzugeben."
 }
