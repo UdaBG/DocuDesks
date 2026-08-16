@@ -108,8 +108,33 @@ try {
   await touch('touchEnd', [])
   await waitFor(`${E}.sessions['${docId}'] && ${E}.sessions['${docId}'].editingId`, 'clean tap opened retype box')
   console.log('clean tap opened a retype box')
-  await evaluate(`(() => { document.querySelector('.eo-textarea')?.blur(); return true })()`)
+
+  // 2b. SLIDE WHILE TYPING = pan with the box still open; only a clean tap
+  // commits it (panning used to kick you out of the box on touch-down)
+  const room = await evaluate(`(() => { const el = document.querySelector('.edit-scroll'); return { top: el.scrollTop, max: el.scrollHeight - el.clientHeight } })()`)
+  console.log('typing-pan headroom:', JSON.stringify(room))
+  await evaluate(`(document.querySelector('.edit-scroll').scrollTop = 0, true)`)
+  await sleep(120)
+  const typingScroll0 = await evaluate(`document.querySelector('.edit-scroll').scrollTop`)
+  await touch('touchStart', [[ov.x + ov.w * 0.5, ov.y + ov.h * 0.7]])
+  for (let dy = 0; dy <= 120; dy += 20) {
+    await touch('touchMove', [[ov.x + ov.w * 0.5, ov.y + ov.h * 0.7 - dy]])
+    await sleep(16)
+  }
+  await touch('touchEnd', [])
   await sleep(300)
+  const typingScroll1 = await evaluate(`document.querySelector('.edit-scroll').scrollTop`)
+  const stillEditing = await evaluate(`!!${E}.sessions['${docId}'].editingId`)
+  console.log(`slide while typing: scrollTop ${typingScroll0}->${typingScroll1}, editing=${stillEditing}`)
+  if (!stillEditing) fail('sliding while typing closed the text box — it must pan instead')
+  if (typingScroll1 - typingScroll0 < 60) fail(`slide while typing did not pan (${typingScroll0}->${typingScroll1})`)
+  await touch('touchStart', [[ov.x + ov.w * 0.5, ov.y + ov.h * 0.75]])
+  await sleep(30)
+  await touch('touchEnd', [])
+  await sleep(400)
+  const committed = await evaluate(`!${E}.sessions['${docId}'].editingId`)
+  console.log('clean tap commits the box:', committed)
+  if (!committed) fail('a clean tap outside the box should commit it')
 
   // 3. SELF-HEAL: a lost pointerup (stale touch) must not stick the app in
   // pinch mode. Inject a touch pointerdown on the scroll container, then fire

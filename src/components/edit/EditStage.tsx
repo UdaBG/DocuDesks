@@ -1181,8 +1181,17 @@ export default function EditStage() {
     const [xf, yf] = toFrac(e)
     try { overlayRef.current!.setPointerCapture(e.pointerId) } catch { /* synthetic or stale pointer */ }
 
+    // While a text box is open, NOTHING commits on touch-down: a slide pans
+    // the page (so you can see what you're typing about) and only a clean tap
+    // on empty paper closes the box — resolved on pointerup. preventDefault
+    // keeps focus (and the phone keyboard) on the textarea during the pan.
+    if (session.editingId) {
+      e.preventDefault()
+      zp.startPan(e)
+      zp.beginTap(e, xf, yf)
+      return
+    }
     if (tool === 'select') {
-      if (session.editingId) finishTextEdit(session.editingId)
       select(doc.id, null)
       setEditing(doc.id, null)
       // any pointer on empty paper pans the canvas (Figma-style); the scroll
@@ -1194,11 +1203,6 @@ export default function EditStage() {
       // The browser's default mousedown action would move focus away from the
       // text box we are about to create (and blur-delete it) — suppress it.
       e.preventDefault()
-      if (session.editingId) {
-        // touching outside an open text box commits it first
-        finishTextEdit(session.editingId)
-        return
-      }
       // A clean tap opens the box; a slide pans the page instead. Placement is
       // deferred to pointerup (onOverlayPointerUp) so you can navigate a
       // zoomed document with a text tool active without dropping a box.
@@ -1338,12 +1342,17 @@ export default function EditStage() {
   }
 
   function onOverlayPointerUp() {
-    // text/retype: resolve the deferred tap. A clean tap opens the box at the
-    // touch-down point; a slide was a pan (handled by the scroll container).
+    // Resolve the deferred tap. A clean tap acts (commit the open box, or
+    // open/place one); a slide was a pan (handled by the scroll container).
     const tap = zp.takeTap()
     if (tap) {
       if (!tap.moved && doc && session && pageRef && view) {
-        if (tool === 'retype') {
+        if (session.editingId) {
+          // a clean tap outside the open box commits it; the pan case above
+          // never reaches here, so typing survives scrolling around
+          finishTextEdit(session.editingId)
+          if (tool === 'select') select(doc.id, null)
+        } else if (tool === 'retype') {
           void retypeAt(tap.xf, tap.yf)
         } else if (tool === 'text') {
           pushHistory(doc.id)
