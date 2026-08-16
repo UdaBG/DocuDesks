@@ -1,0 +1,19 @@
+# Google Play requires native libraries to support 16 KB memory page sizes
+# (mandatory for new apps/updates targeting Android 15+). NDK r27 still links
+# ELF LOAD segments 4 KB-aligned by default, which Play rejects with "Your app
+# does not support 16 KB memory page sizes" — align them explicitly. Desktop
+# builds are untouched (target-scoped flags only).
+
+[target.aarch64-linux-android]
+rustflags = ["-C", "link-arg=-Wl,-z,max-page-size=16384"]
+
+[target.x86_64-linux-android]
+rustflags = ["-C", "link-arg=-Wl,-z,max-page-size=16384"]
+
+# 32-bit ABIs are not covered by the requirement, but keeping every Android
+# target identical costs nothing and avoids surprises.
+[target.armv7-linux-androideabi]
+rustflags = ["-C", "link-arg=-Wl,-z,max-page-size=16384"]
+
+[target.i686-linux-android]
+rustflags = ["-C", "link-arg=-Wl,-z,max-page-size=16384"]
