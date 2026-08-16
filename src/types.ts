@@ -39,6 +39,22 @@ export interface ExtraStamp {
 }
 
 /**
+ * A stack-wide date stamp: today's date rendered to a transparent PNG so it
+ * behaves exactly like a signature stamp (drag/rotate/fit/exclude/apply).
+ * The image regenerates when the style changes.
+ */
+export interface DateStamp {
+  id: string
+  placement: Placement
+  format: string
+  color: string
+  fontId: string
+  dataUrl: string
+  width: number
+  height: number
+}
+
+/**
  * The rectangle a signature actually occupies for a placement, honouring the
  * spot's max-height constraint. Same math for preview pixels and PDF points.
  */

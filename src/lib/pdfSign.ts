@@ -66,3 +66,7 @@ export function applySignature(
 export function signedName(original: string): string {
   return `${safeStem(original)}_signed.pdf`
 }
+
+export function protectedName(original: string): string {
+  return `${safeStem(original)}_protected.pdf`
+}

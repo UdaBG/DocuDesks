@@ -1,11 +1,13 @@
 import { create } from 'zustand'
 import i18next, { matchLanguage, type LanguageCode } from './i18n'
-import type { ExtraStamp, Placement, SavedSignature, SigDoc, SignMode } from './types'
+import type { DateStamp, ExtraStamp, Placement, SavedSignature, SigDoc, SignMode } from './types'
 import { effectivePlacement, resolvePageIndex, uid } from './types'
 import { getPageCount, looksEncrypted } from './lib/pdf'
 import { displayNameFromPath } from './lib/fileName'
 import { detectSignatureSpot } from './lib/smartDetect'
-import { applyStamps, signedName, type StampInput } from './lib/pdfSign'
+import { applyStamps, protectedName, signedName, type StampInput } from './lib/pdfSign'
+import { formatDate, renderDateImage, type DateFormatId } from './lib/dateStamp'
+import { encryptPdf } from './lib/unlockPdf'
 import { useEdit } from './editor/editStore'
 import { buildEditedPdf } from './editor/exportPdf'
 import { isMobileTauri } from './platform/tauriApi'
@@ -44,7 +46,7 @@ export function outputBytesFor(doc: SigDoc): Promise<Uint8Array> {
  * never one without the other.
  */
 export async function finalizedBytesFor(doc: SigDoc): Promise<Uint8Array> {
-  const { mode, placement, signatures, activeSignatureId, extraStamps, primaryRemoved } =
+  const { mode, placement, signatures, activeSignatureId, extraStamps, dateStamps, primaryRemoved } =
     useApp.getState()
   const activeSignature = signatures.find((s) => s.id === activeSignatureId)
   const stamps = buildStampsFor(
@@ -52,6 +54,7 @@ export async function finalizedBytesFor(doc: SigDoc): Promise<Uint8Array> {
     mode,
     placement,
     extraStamps,
+    dateStamps,
     signatures,
     activeSignature,
     primaryRemoved,
@@ -145,6 +148,18 @@ interface AppState {
   setSelectedStamp(id: string | null): void
   /** swap which saved signature an extra stamp uses (stack-wide) */
   updateExtraStampSignature(stampId: string, signatureId: string): void
+  /** stack-wide date stamps (today's date as an image, like extra stamps) */
+  dateStamps: DateStamp[]
+  /** last used date style — new date stamps start from it (persisted) */
+  dateStyle: { format: DateFormatId; color: string; fontId: string }
+  /** place today's date on the current page; selects it so styling is a tap away */
+  addDateStamp(): Promise<void>
+  updateDateStamp(stampId: string, box: { x: number; yb: number; w: number; rot?: number; dropMaxH?: boolean }): void
+  removeDateStampEverywhere(stampId: string): void
+  /** change a date stamp's format/color/face — re-renders its image */
+  restyleDateStamp(stampId: string, patch: Partial<{ format: DateFormatId; color: string; fontId: string }>): Promise<void>
+  /** save an encrypted copy of the FINALIZED document; returns the file name or null if dismissed */
+  protectDoc(docId: string, password: string, bits: 128 | 256): Promise<string | null>
   addSignature(sig: Omit<SavedSignature, 'id' | 'createdAt'>): void
   deleteSignature(id: string): void
   setActiveSignature(id: string): void
@@ -188,6 +203,8 @@ export const useApp = create<AppState>((set, get) => ({
   detecting: false,
   selectedStampId: null,
   extraStamps: [],
+  dateStamps: [],
+  dateStyle: { format: 'dmy', color: '#1c1c1e', fontId: 'print' },
   primaryRemoved: false,
   undoStash: null,
   signing: null,
@@ -218,10 +235,15 @@ export const useApp = create<AppState>((set, get) => ({
         typeof s.width === 'number' &&
         typeof s.height === 'number',
     )
+    // the last date-stamp styling carries across sessions (well-formed only)
+    const ds = settings.dateStyle as { format?: string; color?: string; fontId?: string } | undefined
     set({
       signatures,
       activeSignatureId: signatures[0]?.id ?? null,
       language,
+      ...(ds && typeof ds.format === 'string' && typeof ds.color === 'string' && typeof ds.fontId === 'string'
+        ? { dateStyle: ds as { format: DateFormatId; color: string; fontId: string } }
+        : {}),
     })
     window.signer.onFilesOpened((paths) => {
       // "Open with DocuDesk" on the phone is a request to *see* the file —
@@ -605,6 +627,81 @@ export const useApp = create<AppState>((set, get) => ({
     }))
   },
 
+  async addDateStamp() {
+    const { previewPage, dateStyle, language } = get()
+    const doc = selectedDoc(get())
+    if (!doc) return
+    const text = formatDate(new Date(), dateStyle.format, language)
+    const img = await renderDateImage(text, dateStyle.fontId, dateStyle.color)
+    if (!img) return
+    const anchor =
+      previewPage === doc.pageCount - 1 ? 'last' : previewPage === 0 ? 'first' : 'custom'
+    const stamp: DateStamp = {
+      id: uid(),
+      placement: { anchor, pageIndex: previewPage, x: 0.39, yb: 0.56, w: 0.22 },
+      ...dateStyle,
+      ...img,
+    }
+    set((s) => ({
+      dateStamps: [...s.dateStamps, stamp],
+      // selected on purpose: the style drawer opens for the fresh stamp
+      selectedStampId: stamp.id,
+      docs: s.docs.map((d) => (d.status === 'no-target' ? { ...d, status: 'ready' } : d)),
+    }))
+  },
+
+  updateDateStamp(stampId, box) {
+    const { dropMaxH, ...geom } = box
+    set((s) => ({
+      dateStamps: s.dateStamps.map((st) =>
+        st.id === stampId
+          ? {
+              ...st,
+              placement: { ...st.placement, ...geom, ...(dropMaxH ? { maxH: undefined } : {}) },
+            }
+          : st,
+      ),
+    }))
+  },
+
+  removeDateStampEverywhere(stampId) {
+    set((s) => ({
+      selectedStampId: s.selectedStampId === stampId ? null : s.selectedStampId,
+      dateStamps: s.dateStamps.filter((st) => st.id !== stampId),
+    }))
+  },
+
+  async restyleDateStamp(stampId, patch) {
+    const { dateStamps, language } = get()
+    const stamp = dateStamps.find((d) => d.id === stampId)
+    if (!stamp) return
+    const style = {
+      format: (patch.format ?? stamp.format) as DateFormatId,
+      color: patch.color ?? stamp.color,
+      fontId: patch.fontId ?? stamp.fontId,
+    }
+    const img = await renderDateImage(formatDate(new Date(), style.format, language), style.fontId, style.color)
+    if (!img) return
+    set((s) => ({
+      dateStyle: style, // the next date starts from the last styling
+      dateStamps: s.dateStamps.map((d) => (d.id === stampId ? { ...d, ...style, ...img } : d)),
+    }))
+    const settings = await window.signer.loadSettings()
+    await window.signer.saveSettings({ ...settings, dateStyle: style })
+  },
+
+  async protectDoc(docId, password, bits) {
+    const doc = get().docs.find((d) => d.id === docId)
+    if (!doc || !password) return null
+    const finalized = await finalizedBytesFor(doc)
+    const out = await encryptPdf(finalized, password, bits)
+    const dir = await window.signer.chooseOutputDir()
+    if (!dir) return null
+    const name = protectedName(doc.name)
+    const written = await window.signer.writeSigned(dir, name, out)
+    return written ? name : null
+  },
+
   excludeStampForDoc(docId, stampId) {
     set((s) => ({
       selectedStampId: s.selectedStampId === stampId ? null : s.selectedStampId,
@@ -718,9 +815,9 @@ export const useApp = create<AppState>((set, get) => ({
     const targets = docs.filter((d) => d.status !== 'error')
     if (!targets.length) return
 
-    const { extraStamps, primaryRemoved } = get()
+    const { extraStamps, dateStamps, primaryRemoved } = get()
     const stampsFor = (doc: SigDoc): StampInput[] =>
-      buildStampsFor(doc, mode, placement, extraStamps, signatures, activeSignature, primaryRemoved)
+      buildStampsFor(doc, mode, placement, extraStamps, dateStamps, signatures, activeSignature, primaryRemoved)
     if (!targets.some((d) => stampsFor(d).length)) return
 
     const dir = await window.signer.chooseOutputDir()
@@ -799,11 +896,12 @@ function selectedDoc(s: { docs: SigDoc[]; selectedDocId: string | null }): SigDo
 }
 
 /** Every stamp a document receives: bulk primary + stack-wide extras, minus per-doc removals. */
-function buildStampsFor(
+export function buildStampsFor(
   doc: SigDoc,
   mode: SignMode,
   placement: Placement,
   extraStamps: ExtraStamp[],
+  dateStamps: DateStamp[],
   signatures: SavedSignature[],
   activeSignature: SavedSignature | undefined,
   primaryRemoved: boolean,
@@ -818,6 +916,14 @@ function buildStampsFor(
     if (doc.excludedStamps?.includes(stamp.id)) continue
     const sig = signatures.find((s) => s.id === stamp.signatureId)
     if (sig) list.push({ signature: sig, placement: stamp.placement })
+  }
+  // date stamps carry their own rendered image — same pipeline as signatures
+  for (const d of dateStamps) {
+    if (doc.excludedStamps?.includes(d.id)) continue
+    list.push({
+      signature: { id: d.id, name: 'date', dataUrl: d.dataUrl, width: d.width, height: d.height, createdAt: 0 },
+      placement: d.placement,
+    })
   }
   return list
 }

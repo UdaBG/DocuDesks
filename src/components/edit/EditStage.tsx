@@ -13,7 +13,8 @@ import {
   textNominalHeightPt,
   textStyleFingerprint,
 } from '../../editor/types'
-import { uid } from '../../types'
+import { fitStampBox, resolvePageIndex, uid } from '../../types'
+import { buildStampsFor } from '../../store'
 import type { PDFPageProxy } from 'pdfjs-dist'
 import { openPdf, renderPage, type OpenedPdf } from '../../lib/pdf'
 import { ocrPage, pageLooksScanned, setOcrProgress } from '../../lib/ocr'
@@ -413,6 +414,15 @@ export default function EditStage() {
   const docs = useApp((s) => s.docs)
   const selectedDocId = useApp((s) => s.selectedDocId)
   const doc = docs.find((d) => d.id === selectedDocId)
+  // sign-side stamps (signatures + dates) show as untouchable ghosts, so the
+  // paper reads the same in every view — they are placed/edited in Sign
+  const signMode = useApp((s) => s.mode)
+  const signPlacement = useApp((s) => s.placement)
+  const extraStamps = useApp((s) => s.extraStamps)
+  const dateStamps = useApp((s) => s.dateStamps)
+  const signatures = useApp((s) => s.signatures)
+  const activeSignatureId = useApp((s) => s.activeSignatureId)
+  const primaryRemoved = useApp((s) => s.primaryRemoved)
 
   const session = useEdit((s) => (doc ? s.sessions[doc.id] : undefined))
   const tool = useEdit((s) => s.tool)
@@ -1464,6 +1474,28 @@ export default function EditStage() {
 
   const objects = session && view ? session.objects.filter((o) => o.pageId === view.pageId) : []
   const all = draft && view && draft.pageId === view.pageId ? [...objects, draft] : objects
+  // ghosts of the sign-side stamps on this page (original pages only — blank
+  // pages inserted in Edit have no counterpart in the sign placements)
+  const ghosts =
+    doc && view && pageRef && pageRef.src.type === 'orig'
+      ? buildStampsFor(
+          doc,
+          signMode,
+          signPlacement,
+          extraStamps,
+          dateStamps,
+          signatures,
+          signatures.find((s) => s.id === activeSignatureId),
+          primaryRemoved,
+        )
+          .filter((st) => resolvePageIndex(st.placement, doc.pageCount) === (pageRef.src as { index: number }).index)
+          .map((st, i) => ({
+            key: `${st.signature.id}:${i}`,
+            dataUrl: st.signature.dataUrl,
+            rot: st.placement.rot,
+            ...fitStampBox(st.placement, st.signature.width, st.signature.height, view.W, view.H),
+          }))
+      : []
   const scale = view ? view.W / view.wPt : 1
   const selected = session?.selectedId
     ? session.objects.find((o) => o.id === session.selectedId) ?? null
@@ -1621,6 +1653,24 @@ export default function EditStage() {
               }
             }}
           />
+          {ghosts.length > 0 && (
+            <div className="stamp-ghosts" aria-hidden="true">
+              {ghosts.map((g) => (
+                <img
+                  key={g.key}
+                  src={g.dataUrl}
+                  alt=""
+                  style={{
+                    left: g.x,
+                    top: g.yTop,
+                    width: g.w,
+                    height: g.h,
+                    transform: g.rot ? `rotate(${g.rot}deg)` : undefined,
+                  }}
+                />
+              ))}
+            </div>
+          )}
           <div
             ref={overlayRef}
             className={`edit-overlay tool-${tool}${sampling ? ' sampling' : ''}`}

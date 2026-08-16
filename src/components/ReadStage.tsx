@@ -38,6 +38,7 @@ export default function ReadStage() {
   const mode = useApp((s) => s.mode)
   const placement = useApp((s) => s.placement)
   const extraStamps = useApp((s) => s.extraStamps)
+  const dateStamps = useApp((s) => s.dateStamps)
   const primaryRemoved = useApp((s) => s.primaryRemoved)
   const signatures = useApp((s) => s.signatures)
   const activeSignatureId = useApp((s) => s.activeSignatureId)
@@ -134,6 +135,7 @@ export default function ReadStage() {
     mode,
     placement,
     extraStamps,
+    dateStamps,
     primaryRemoved,
     signatures,
     activeSignatureId,

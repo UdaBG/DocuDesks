@@ -101,6 +101,27 @@ export function SparkIcon({ size, className }: IconProps) {
   ))
 }
 
+/** Padlock — protect/encrypt. */
+export function LockIcon({ size, className }: IconProps) {
+  return svg(size, className, (
+    <>
+      <rect x="5" y="10.5" width="14" height="10" rx="2.5" />
+      <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3M12 14.5v2.5" />
+    </>
+  ))
+}
+
+/** Calendar — the sign-view date stamp. */
+export function CalendarIcon({ size, className }: IconProps) {
+  return svg(size, className, (
+    <>
+      <rect x="3.5" y="5" width="17" height="15.5" rx="2.5" />
+      <path d="M3.5 9.5h17M8 2.8v4M16 2.8v4" />
+      <path d="M7.5 13.5h3M13.5 13.5h3M7.5 17h3" />
+    </>
+  ))
+}
+
 /** Open book — the Read view. */
 export function BookIcon({ size, className }: IconProps) {
   return svg(size, className, (

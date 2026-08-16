@@ -139,7 +139,9 @@ let lastBackAt = 0
   }
   // 5. unsaved work guards the exit
   const hasUnsaved =
-    app.docs.some((d) => sessionHasEdits(edit.sessions[d.id], d)) || app.extraStamps.length > 0
+    app.docs.some((d) => sessionHasEdits(edit.sessions[d.id], d)) ||
+    app.extraStamps.length > 0 ||
+    app.dateStamps.length > 0
   if (hasUnsaved) {
     app.requestExit()
     return 'handled'
@@ -190,6 +192,19 @@ type PickedItem = string | { uri: string; name?: string }
     }
   })()
   return true
+}
+
+// Test helper: decrypt a PDF (by path) with the bundled qpdf and report its
+// page count — proves a protected output opens with the right password.
+;(window as unknown as Record<string, unknown>).__unlockProbe = async (
+  path: string,
+  password: string,
+) => {
+  const { unlockPdf } = await import('./lib/unlockPdf')
+  const { getPageCount } = await import('./lib/pdf')
+  const bytes = new Uint8Array(await window.signer.readFile(path))
+  const clear = await unlockPdf(bytes, password)
+  return { pages: await getPageCount(clear) }
 }
 
 // Test helper: render a page of a PDF (by path) through the app's exact

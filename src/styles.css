@@ -252,8 +252,195 @@ select,
 .tools-host {
   display: contents;
 }
+/* shared by the edit-tools drawer (phone) and the date-style drawer (all
+   platforms) — only rendered while a drawer is open */
 .drawer-veil {
-  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 39;
+  background: rgba(10, 13, 20, 0.45);
+}
+
+/* ---------- date stamp ---------- */
+.date-add-pill {
+  position: absolute;
+  top: 10px;
+  right: 132px;
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: rgba(18, 22, 31, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #c7cede;
+  font-size: 12px;
+  font-weight: 600;
+  backdrop-filter: blur(4px);
+}
+.date-add-pill:hover {
+  color: #fff;
+  background: rgba(38, 46, 66, 0.92);
+}
+.sig-box.date-stamp {
+  border-color: rgba(107, 76, 175, 0.65);
+  background: rgba(107, 76, 175, 0.05);
+}
+.sig-box.date-stamp .sig-handle,
+.sig-box.date-stamp .sig-rotate {
+  border-color: #6b4caf;
+}
+.sig-box.date-stamp .sig-rotate::after {
+  background: #6b4caf;
+}
+
+.date-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(320px, 84vw);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  overflow-y: auto;
+  background: var(--panel);
+  border-left: 1px solid var(--ink-200);
+  box-shadow: -14px 0 44px rgba(0, 0, 0, 0.35);
+}
+.date-drawer-sub {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-500);
+  margin-top: 6px;
+}
+.date-formats {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.date-format {
+  text-align: left;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--ink-200);
+  font-size: 13px;
+}
+.date-format:hover {
+  background: var(--ink-200);
+}
+.date-format.active {
+  border-color: var(--royal);
+  background: var(--royal-soft);
+  font-weight: 600;
+}
+.date-colors {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.color-chip {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--ink-200);
+}
+.color-chip.active {
+  border-color: var(--royal);
+  box-shadow: 0 0 0 2px var(--royal-soft);
+}
+.color-chip-custom {
+  background: conic-gradient(#f66, #fc3, #6d5, #4bd, #b6f, #f66);
+}
+.date-mixer-anchor {
+  position: relative;
+}
+.date-fonts {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.date-font {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--ink-200);
+}
+.date-font:hover {
+  background: var(--ink-200);
+}
+.date-font.active {
+  border-color: var(--royal);
+  background: var(--royal-soft);
+}
+.date-font-sample {
+  font-size: 17px;
+}
+.date-font-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--ink-500);
+}
+.btn-danger-ghost {
+  color: var(--red);
+  border-color: rgba(187, 58, 48, 0.4);
+}
+.btn-danger-ghost:hover {
+  background: rgba(187, 58, 48, 0.1);
+}
+
+/* sign-side stamps shown in the EDIT view: untouchable ghosts */
+.stamp-ghosts {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.45;
+}
+.stamp-ghosts img {
+  position: absolute;
+}
+
+/* ---------- protect dialog ---------- */
+.protect-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0;
+  font-size: 12.5px;
+  color: var(--ink-700);
+}
+.protect-field input {
+  padding: 8px 10px;
+  border: 1px solid var(--ink-300);
+  border-radius: 8px;
+  background: var(--paper);
+  font-size: 14px;
+}
+.protect-error {
+  color: var(--red);
+  font-size: 12.5px;
+  margin: 2px 0;
+}
+.protect-strength {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px 0 4px;
+  font-size: 12.5px;
+}
+.protect-strength label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 /* ---------- top bar ---------- */
@@ -2364,6 +2551,10 @@ input[type='range'] {
   .zoom-pill {
     top: auto;
     bottom: 76px;
+    right: 8px;
+  }
+  /* the zoom pill left the top corner — the date pill can have it */
+  .date-add-pill {
     right: 8px;
   }
   .lang select {

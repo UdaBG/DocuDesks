@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useApp } from '../store'
 import { effectivePlacement } from '../types'
-import { CheckIcon, PlusIcon, TrashIcon } from './icons'
+import ProtectDialog from './ProtectDialog'
+import { CheckIcon, LockIcon, PlusIcon, TrashIcon } from './icons'
 
 export default function RightPanel() {
   const { t } = useTranslation()
@@ -19,6 +21,7 @@ export default function RightPanel() {
   const selectedStampId = useApp((s) => s.selectedStampId)
   const updateExtraStampSignature = useApp((s) => s.updateExtraStampSignature)
   const extraStamps = useApp((s) => s.extraStamps)
+  const [protectOpen, setProtectOpen] = useState(false)
 
   const doc = docs.find((d) => d.id === selectedDocId)
   const pl = doc ? effectivePlacement(doc, mode, placement) : mode === 'manual' ? placement : null
@@ -132,6 +135,22 @@ export default function RightPanel() {
           <p className="muted">{t('sig.clickToPlace')}</p>
         )}
       </section>
+
+      <section>
+        <div className="panel-head">
+          <h2>{t('protect.section')}</h2>
+        </div>
+        <button
+          className="ghost-btn wide"
+          disabled={!doc || doc.status === 'error'}
+          onClick={() => setProtectOpen(true)}
+        >
+          <LockIcon size={14} />
+          {t('protect.button')}
+        </button>
+        <p className="muted">{t('protect.hint')}</p>
+      </section>
+      {protectOpen && doc && <ProtectDialog docId={doc.id} onClose={() => setProtectOpen(false)} />}
     </aside>
   )
 }

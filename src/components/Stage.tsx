@@ -6,7 +6,8 @@ import { buildEditedPdf } from '../editor/exportPdf'
 import { openPdf, renderPage, type OpenedPdf, type RenderedPage } from '../lib/pdf'
 import { effectivePlacement, fitStampBox, resolvePageIndex } from '../types'
 import { useZoomPan } from '../lib/useZoomPan'
-import { ChevronLeftIcon, ChevronRightIcon, CloseIcon, DocMinusIcon, NibIcon, PlusIcon } from './icons'
+import DateStyleDrawer from './DateStyleDrawer'
+import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon, CloseIcon, DocMinusIcon, NibIcon, PlusIcon } from './icons'
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
 
@@ -40,6 +41,10 @@ export default function Stage() {
   const updateExtraStamp = useApp((s) => s.updateExtraStamp)
   const excludeStampForDoc = useApp((s) => s.excludeStampForDoc)
   const extraStamps = useApp((s) => s.extraStamps)
+  const dateStamps = useApp((s) => s.dateStamps)
+  const addDateStamp = useApp((s) => s.addDateStamp)
+  const updateDateStamp = useApp((s) => s.updateDateStamp)
+  const removeDateStampEverywhere = useApp((s) => s.removeDateStampEverywhere)
   const detecting = useApp((s) => s.detecting)
   const redetectDoc = useApp((s) => s.redetectDoc)
   const removeExtraStampEverywhere = useApp((s) => s.removeExtraStampEverywhere)
@@ -245,6 +250,22 @@ export default function Stage() {
           .filter((x): x is NonNullable<typeof x> => x !== null)
       : []
 
+  // date stamps carry their own image — same fitting math as signatures
+  const dates =
+    doc && docOk && rendered
+      ? dateStamps
+          .filter(
+            (st) =>
+              !doc.excludedStamps?.includes(st.id) &&
+              resolvePageIndex(st.placement, doc.pageCount) === page,
+          )
+          .map((st) => {
+            const fitted = fitStampBox(st.placement, st.width, st.height, rendered.width, rendered.height)
+            return { stamp: st, box: { x: fitted.x, top: fitted.yTop, w: fitted.w, h: fitted.h } }
+          })
+      : []
+  const selectedDate = dateStamps.find((d) => d.id === selectedStampId) ?? null
+
   function commitBox(
     target: string,
     b: { x: number; top: number; w: number; h: number },
@@ -260,6 +281,7 @@ export default function Stage() {
       dropMaxH,
     }
     if (target === 'primary') updatePlacementBox(geom)
+    else if (dateStamps.some((d) => d.id === target)) updateDateStamp(target, geom)
     else updateExtraStamp(target, geom)
   }
 
@@ -395,6 +417,7 @@ export default function Stage() {
 
   function removeStampEverywhere(target: string) {
     if (target === 'primary') removePrimaryEverywhere()
+    else if (dateStamps.some((d) => d.id === target)) removeDateStampEverywhere(target)
     else removeExtraStampEverywhere(target)
   }
 
@@ -465,6 +488,15 @@ export default function Stage() {
           </button>
         </div>
       )}
+
+      {docOk && (
+        <button className="date-add-pill" title={t('date.title')} onClick={() => void addDateStamp()}>
+          <CalendarIcon size={14} />
+          {t('date.add')}
+        </button>
+      )}
+
+      {selectedDate && <DateStyleDrawer stamp={selectedDate} onClose={() => setSelectedStamp(null)} />}
 
       <div className="sign-scroll" {...zp.scrollProps}>
         {rendered && docOk && (
@@ -630,6 +662,68 @@ export default function Stage() {
                     className="sig-rotate"
                     title={t('sig.rotate')}
                     onPointerDown={(e) => beginStampDrag(e, 'rotate', stamp.id, b, sig.height / sig.width)}
+                    onPointerMove={onPointerMove}
+                    onPointerUp={onPointerUp}
+                    onDoubleClick={(e) => {
+                      e.stopPropagation()
+                      commitBox(stamp.id, b, false, 0)
+                    }}
+                  />
+                </div>
+              ))}
+            {doc &&
+              dates.map(({ stamp, box: b }) => (
+                <div
+                  key={stamp.id}
+                  className={`sig-box date-stamp ${selectedStampId === stamp.id ? 'stamp-selected' : ''}`}
+                  style={{
+                    left: b.x,
+                    top: b.top,
+                    width: b.w,
+                    height: b.h,
+                    transform: stamp.placement.rot ? `rotate(${stamp.placement.rot}deg)` : undefined,
+                  }}
+                  onPointerDown={(e) => beginStampDrag(e, 'move', stamp.id, b, stamp.height / stamp.width)}
+                  onPointerMove={onPointerMove}
+                  onPointerUp={onPointerUp}
+                >
+                  <img src={stamp.dataUrl} alt="" draggable={false} />
+                  {docs.length > 1 && (
+                    <button
+                      className="stamp-x stamp-doc-x"
+                      title={t('sig.removeStampDoc')}
+                      aria-label={t('sig.removeStampDoc')}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        excludeStampForDoc(doc.id, stamp.id)
+                      }}
+                    >
+                      <DocMinusIcon size={10} />
+                    </button>
+                  )}
+                  <button
+                    className="stamp-x"
+                    title={t(docs.length > 1 ? 'sig.removeStampAll' : 'sig.removeStamp')}
+                    aria-label={t(docs.length > 1 ? 'sig.removeStampAll' : 'sig.removeStamp')}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onStampX(stamp.id)
+                    }}
+                  >
+                    <CloseIcon size={10} />
+                  </button>
+                  <span
+                    className="sig-handle"
+                    onPointerDown={(e) => beginStampDrag(e, 'resize', stamp.id, b, stamp.height / stamp.width)}
+                    onPointerMove={onPointerMove}
+                    onPointerUp={onPointerUp}
+                  />
+                  <span
+                    className="sig-rotate"
+                    title={t('sig.rotate')}
+                    onPointerDown={(e) => beginStampDrag(e, 'rotate', stamp.id, b, stamp.height / stamp.width)}
                     onPointerMove={onPointerMove}
                     onPointerUp={onPointerUp}
                     onDoubleClick={(e) => {

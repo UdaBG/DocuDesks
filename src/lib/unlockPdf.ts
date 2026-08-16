@@ -56,7 +56,7 @@ const OK_CODES = new Set([0, 3])
  * decrypts with the empty default. Throws if qpdf cannot open the file (e.g.
  * a real open password is required or the input is corrupt).
  */
-export async function unlockPdf(bytes: Uint8Array, password = ''): Promise<Uint8Array> {
+async function runQpdf(bytes: Uint8Array, args: string[]): Promise<Uint8Array> {
   const factory = await loadFactory()
   const base = new URL('qpdf/', document.baseURI).href
   const qpdf = await factory({ locateFile: () => `${base}qpdf.wasm?v=${__APP_VERSION__}` })
@@ -64,7 +64,7 @@ export async function unlockPdf(bytes: Uint8Array, password = ''): Promise<Uint8
   const outPath = '/out.pdf'
   qpdf.FS.writeFile(inPath, bytes)
   try {
-    const code = qpdf.callMain(['--decrypt', `--password=${password}`, inPath, outPath])
+    const code = qpdf.callMain([...args, inPath, outPath])
     if (!OK_CODES.has(code)) {
       throw new Error(`qpdf exited ${code}`)
     }
@@ -82,4 +82,25 @@ export async function unlockPdf(bytes: Uint8Array, password = ''): Promise<Uint8
       /* never written on failure */
     }
   }
+}
+
+export async function unlockPdf(bytes: Uint8Array, password = ''): Promise<Uint8Array> {
+  return runQpdf(bytes, ['--decrypt', `--password=${password}`])
+}
+
+/**
+ * Encrypt `bytes` so the output requires `password` to open (the password is
+ * used as both the user and owner password — one secret, full control).
+ * AES-256 by default; 128-bit (still AES) only for very old readers.
+ */
+export async function encryptPdf(
+  bytes: Uint8Array,
+  password: string,
+  bits: 128 | 256 = 256,
+): Promise<Uint8Array> {
+  const args =
+    bits === 256
+      ? ['--encrypt', password, password, '256', '--']
+      : ['--encrypt', password, password, '128', '--use-aes=y', '--']
+  return runQpdf(bytes, args)
 }
